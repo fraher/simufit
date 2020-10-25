@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.optimize import minimize
+from scipy.stats import norm
 import scipy.special
 import sys
 
@@ -23,10 +24,10 @@ class MplCanvas(FigureCanvasQTAgg):
         super(MplCanvas, self).__init__(self.fig)
 
 
-class MainWindow(QMainWindow):
+class Fitter(QMainWindow):
 
     def __init__(self, samples):
-        super(MainWindow, self).__init__()
+        super(Fitter, self).__init__()
         self.setWindowTitle('Distribution Fitter')
         self.samples = samples
         self.initUI()
@@ -38,27 +39,53 @@ class MainWindow(QMainWindow):
 
         self.sc = MplCanvas(self, width=8, height=6, dpi=100)
         self.sc.axes.set_facecolor((53/255, 53/255, 53/255))
-        self.sc.axes.hist(self.samples, bins=np.arange(10), density=True, color=(152/255, 200/255, 132/255), ec='white')
+        # TODO: need a way how to decide how many bins.
+        self.sc.axes.hist(self.samples, bins=10, density=True, color=(152/255, 200/255, 132/255), ec='white')
 
         # Create toolbar, passing canvas as first parameter, parent (self, the MainWindow) as second.
         toolbar = NavigationToolbar(self.sc, self)
 
         # Create grid layout for selecting distribution
-        self.dist_selector = QtWidgets.QComboBox()
+        self.distSelector = QtWidgets.QComboBox()
         for item in ['Geometric', 'Uniform', 'Normal', 'Exponential', 'Gamma']:
-            self.dist_selector.addItem(item)
+            self.distSelector.addItem(item)
+        self.distSelector.currentTextChanged.connect(self.changeDist)
 
+        # Geometric slider
         self.pLabel = QtWidgets.QLabel('p')
         self.pSlider = QtWidgets.QSlider(minimum=1, orientation=QtCore.Qt.Horizontal, maximum=99)
         self.pValue = QtWidgets.QLabel('0.01')
         self.pSlider.valueChanged[int].connect(self.sliderEvent)
         self.pSlider.setFixedWidth(275)
+        self.geomSliders = [self.pLabel, self.pSlider, self.pValue]
+
+        # Normal slider
+        self.meanLabel = QtWidgets.QLabel('mean')
+        self.meanSlider = QtWidgets.QSlider(minimum=-99, orientation=QtCore.Qt.Horizontal, maximum=99)
+        self.meanSlider.setValue(0)
+        self.meanValue = QtWidgets.QLabel('0')
+        self.meanSlider.valueChanged[int].connect(self.sliderEvent)
+        self.meanSlider.setFixedWidth(275)
+        self.varLabel = QtWidgets.QLabel('variance')
+        self.varSlider = QtWidgets.QSlider(minimum=1, orientation=QtCore.Qt.Horizontal, maximum=99)
+        self.varValue = QtWidgets.QLabel('0.01')
+        self.varSlider.valueChanged[int].connect(self.sliderEvent)
+        self.varSlider.setFixedWidth(275)
+        self.normalSliders = [self.meanLabel, self.meanSlider, self.meanValue, self.varLabel, self.varSlider, self.varValue]
+        for w in self.normalSliders:
+            w.setHidden(True)
 
         grid = QtWidgets.QGridLayout()
-        grid.addWidget(self.dist_selector, 0, 0)
+        grid.addWidget(self.distSelector, 0, 0)
         grid.addWidget(self.pLabel, 0, 1)
         grid.addWidget(self.pValue, 0, 2)
         grid.addWidget(self.pSlider, 0, 3)
+        grid.addWidget(self.meanLabel, 0, 1)
+        grid.addWidget(self.meanValue, 0, 2)
+        grid.addWidget(self.meanSlider, 0, 3)
+        grid.addWidget(self.varLabel, 1, 1)
+        grid.addWidget(self.varValue, 1, 2)
+        grid.addWidget(self.varSlider, 1, 3)
         layout = QtWidgets.QVBoxLayout()
         layout.addWidget(toolbar)
         layout.addLayout(grid)
@@ -69,26 +96,49 @@ class MainWindow(QMainWindow):
         widget.setLayout(layout)
         self.setCentralWidget(widget)
 
+    def changeDist(self):
+
+        if self.distSelector.currentText() == 'Geometric':
+            for w in self.geomSliders:
+                w.setHidden(False)
+            for w in self.normalSliders:
+                w.setHidden(True)
+
+        if self.distSelector.currentText() == 'Normal':
+            for w in self.geomSliders:
+                w.setHidden(True)
+            for w in self.normalSliders:
+                w.setHidden(False)
+
     def sliderEvent(self):
 
         if len(self.sc.axes.lines) > 0:
             self.sc.axes.lines.pop()
 
-        k = np.arange(1, 10)
-        p = self.pSlider.value() / 100
-        f = ((1 - p) ** (k - 1)) * p
-        self.sc.axes.plot(k, f)
+        if self.distSelector.currentText() == 'Geometric':
+            x = np.arange(1, 10)
+            p = self.pSlider.value() / 100
+            f = ((1 - p) ** (x - 1)) * p
+            self.pValue.setText(str(round(p, 3)))
+        elif self.distSelector.currentText() == 'Normal':
+            mean = self.meanSlider.value() / 10
+            var = self.varSlider.value() / 10
+            self.meanValue.setText(str(round(mean, 3)))
+            self.varValue.setText(str(round(var, 3)))
+            x = np.linspace(norm.ppf(0.01, mean, var), norm.ppf(0.99, mean, var), 100)
+            f = norm.pdf(x, mean, var)
+
+        self.sc.axes.plot(x, f)
         self.sc.fig.canvas.draw_idle()
 
-        self.pValue.setText(str(round(p, 3)))
 
-
-def window(samples):
+def run_fitter(samples):
     if not QApplication.instance():
         app = QApplication(sys.argv)
     else:
         app = QApplication.instance()
 
+    # Set the color scheme
     app.setStyle("Fusion")
     palette = QPalette()
     palette.setColor(QPalette.Window, QtGui.QColor(53, 53, 53))
@@ -106,8 +156,8 @@ def window(samples):
     palette.setColor(QPalette.HighlightedText, QtCore.Qt.black)
     app.setPalette(palette)
 
-    win = MainWindow(samples)
-    win.show()
+    window = Fitter(samples)
+    window.show()
     QtWidgets.QApplication.setQuitOnLastWindowClosed(True)
     app.exec_()
     app.quit()
@@ -127,12 +177,16 @@ class Geometric:
         return np.random.geometric(p=p, size=size)
 
     def negLogL(self, p, samples):
+        """Returns the negative log likelihood given a collection of samples and parameter p."""
 
         n = len(samples)
 
         return (n * np.log(p) + np.sum(samples - 1) * np.log(1 - p)) * -1
 
     def MLE(self, samples, use_minimizer=False, x0=None):
+        """Returns the maximum likelihood estimate of parameter p, given a collection of samples.
+        If use_minimizer=True, an initial guess x0 for p must be provided. Otherwise, the closed
+        form expression for the MLE of p is used."""
 
         if use_minimizer:
             if x0 is None:
@@ -145,7 +199,9 @@ class Geometric:
             return 1 / np.mean(samples)
 
     def fit(self, samples):
-        window(samples)
+        """Run the PyQt/MPL visualization."""
+
+        run_fitter(samples)
 
 
 class Uniform:
@@ -168,18 +224,15 @@ class Uniform:
         return a, b
 
     def fit(self, samples):
-        window(samples)
+        """Run the PyQt/MPL visualization."""
+
+        run_fitter(samples)
 
 
 class Normal:
 
     def __init__(self):
         pass
-
-    def seed(self, seed):
-        """Set seed."""
-
-        np.random.seed(seed)
 
     def sample(self, mean=0., var=1., size=None):
         """Get samples from Norm(μ, σ^2). The size argument is the number of samples (default 1)."""
@@ -222,7 +275,10 @@ class Normal:
             return mu, var
 
     def fit(self, samples):
-        window(samples)
+        """Run the PyQt/MPL visualization."""
+
+        run_fitter(samples)
+
 
 class Exponential:
 
@@ -267,7 +323,10 @@ class Exponential:
             return lambd
 
     def fit(self, samples):
-        window(samples)
+        """Run the PyQt/MPL visualization."""
+
+        run_fitter(samples)
+
 
 class Gamma:
 
@@ -306,5 +365,7 @@ class Gamma:
         return minimize(nll, x0, args=samples, method='Nelder-Mead')
 
     def fit(self, samples):
-        window(samples)
+        """Run the PyQt/MPL visualization."""
+
+        run_fitter(samples)
 
