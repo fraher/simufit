@@ -163,6 +163,55 @@ def run_fitter(samples):
     app.quit()
 
 
+class Bernoulli:
+
+    def __init__(self):
+        pass
+
+    def sample(self, p, size=None):
+        """Get samples from Bern(p). The size argument is the number of samples (default 1)."""
+
+        if p <= 0 or p >= 1:
+            raise ValueError('p must be in the range (0, 1).')
+
+        samples = np.random.uniform(size=size)
+        mask1 = samples >= p
+        mask2 = samples < p
+        samples[mask1] = 0
+        samples[mask2] = 1
+
+        return samples
+
+    def negLogL(self, p, samples):
+        """Calculate the negative log likelihood for a collection of random
+        Bernoulli-distributed samples, and a specified p."""
+
+        n = len(samples)
+        m = np.sum(samples)
+
+        return (m * np.log(p) + (n - m) * np.log(1 - p)) * -1
+
+    def MLE(self, samples, use_minimizer=False, x0=None):
+        """Returns the maximum likelihood estimate of parameter p, given a collection of samples.
+        If use_minimizer=True, an initial guess x0 for p must be provided. Otherwise, the closed
+        form expression for the MLE of p is used."""
+
+        if use_minimizer:
+            if x0 is None:
+                raise ValueError('Supply an initial guess x0=p to the optimizer.')
+            if x0 <= 0 or x0 >= 1:
+                raise ValueError('p must be in the range (0, 1). Supply an initial guess in this range.')
+            return minimize(self.negLogL, x0, args=samples, method='Nelder-Mead')
+
+        else:
+            return np.mean(samples)
+
+    def fit(self, samples):
+        """Run the PyQt/MPL visualization."""
+
+        run_fitter(samples)
+
+
 class Geometric:
 
     def __init__(self):
@@ -369,3 +418,45 @@ class Gamma:
 
         run_fitter(samples)
 
+
+class Weibull:
+
+    def __init__self(self):
+        pass
+
+    def sample(self, a, b=1, size=None):
+        """Get samples from Weibull(a, b). The shape parameter is a, the scale parameter is b (default 1).
+        The size argument is the number of samples (default 1)."""
+
+        if not a > 0 or not b > 0:
+            raise ValueError('a and b must be greater than 0.')
+
+        return b * np.random.weibull(a=a, size=size)
+
+    def negLogL(self, a, b, samples):
+        """Calculate the negative log likelihood for a collection of random
+        weibull-distributed samples, and specified shape and scale parameters a and b."""
+
+        n = len(samples)
+
+        return (n * np.log(b) - n * np.log(a) + (b - 1) * np.sum(np.log(samples / a)) - np.sum(np.power((samples / a), b))) * -1
+
+    def MLE(self, samples, x0=None):
+        """Calculate the maximum likelihood estimator (MLE) for a collection of
+        random weibull-distributed samples. Returns the MLE a and b.
+        If use_minimizer=True, provide a initial guess for the optimizer in
+        form x0=(a, b)."""
+
+        if x0 is None:
+            raise ValueError('Supply an initial guess x0=(a,b) to the optimizer.')
+        if not x0[0] > 0 or not x0[1] > 0:
+            raise ValueError('a and b must be greater than 0. Supply an initial guess x0=(a,b) with a > 0 and b > 0.')
+
+        def nll(x, samples):
+            return self.negLogL(*x, samples)
+        return minimize(nll, x0, args=samples, method='Nelder-Mead')
+
+    def fit(self, samples):
+        """Run the PyQt/MPL visualization."""
+
+        run_fitter(samples)
