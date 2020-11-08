@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.optimize import minimize
-from scipy.stats import norm
+from scipy.stats import norm, expon
 import scipy.special
 import sys
 
@@ -13,6 +13,7 @@ from matplotlib.figure import Figure
 from PyQt5 import QtWidgets, QtGui, QtCore, QtSql
 from PyQt5.QtWidgets import QWidget, QApplication, QMainWindow, QAction, QFileDialog, QInputDialog
 from PyQt5.QtGui import QPalette, QWheelEvent, QCursor, QPixmap
+from PyQt5.QtWidgets import QSizePolicy as qsp
 
 
 class MplCanvas(FigureCanvasQTAgg):
@@ -21,16 +22,20 @@ class MplCanvas(FigureCanvasQTAgg):
         self.fig = Figure(figsize=(width, height), dpi=dpi)
         self.fig.patch.set_facecolor((53/255, 53/255, 53/255))
         self.axes = self.fig.add_subplot(111)
+        self.axes.set_facecolor((53/255, 53/255, 53/255))
         super(MplCanvas, self).__init__(self.fig)
 
 
 class Fitter(QMainWindow):
 
-    def __init__(self, samples):
+    def __init__(self, samples, dist=None):
         super(Fitter, self).__init__()
         self.setWindowTitle('Distribution Fitter')
         self.samples = samples
+        self.dist = dist
         self.initUI()
+        self.changeDist()
+        self.plotData()
 
     def initUI(self):
         """Sets up all the UI functionality."""
@@ -38,57 +43,84 @@ class Fitter(QMainWindow):
         ### Menu and Toolbars ###
 
         self.sc = MplCanvas(self, width=8, height=6, dpi=100)
-        self.sc.axes.set_facecolor((53/255, 53/255, 53/255))
-        # TODO: need a way how to decide how many bins.
-        self.sc.axes.hist(self.samples, bins=10, density=True, color=(152/255, 200/255, 132/255), ec='white')
+        self.sc.setSizePolicy(qsp.Fixed, qsp.Fixed)
 
         # Create toolbar, passing canvas as first parameter, parent (self, the MainWindow) as second.
         toolbar = NavigationToolbar(self.sc, self)
 
         # Create grid layout for selecting distribution
         self.distSelector = QtWidgets.QComboBox()
-        for item in ['Geometric', 'Uniform', 'Normal', 'Exponential', 'Gamma']:
-            self.distSelector.addItem(item)
+        self.distSelector.setFixedSize(QtCore.QSize(100, 24))
+        if self.dist is None:
+            dists = ['Geometric', 'Uniform', 'Normal', 'Exponential', 'Gamma']
+            for dist in dists:
+                self.distSelector.addItem(dist)
+        else:
+            self.distSelector.addItem(self.dist.name)
         self.distSelector.currentTextChanged.connect(self.changeDist)
 
-        # Geometric slider
-        self.pLabel = QtWidgets.QLabel('p')
-        self.pSlider = QtWidgets.QSlider(minimum=1, orientation=QtCore.Qt.Horizontal, maximum=99)
-        self.pValue = QtWidgets.QLabel('0.01')
-        self.pSlider.valueChanged[int].connect(self.sliderEvent)
-        self.pSlider.setFixedWidth(275)
-        self.geomSliders = [self.pLabel, self.pSlider, self.pValue]
+        # Slider 1
+        self.slider1Label = QtWidgets.QLabel('p')
+        self.slider1 = QtWidgets.QSlider(minimum=1, orientation=QtCore.Qt.Horizontal, maximum=999)
+        self.slider1Value = QtWidgets.QLabel('0.01')
+        self.slider1.valueChanged[int].connect(self.plotData)
+        self.slider1.setFixedWidth(275)
 
-        # Normal slider
-        self.meanLabel = QtWidgets.QLabel('mean')
-        self.meanSlider = QtWidgets.QSlider(minimum=-99, orientation=QtCore.Qt.Horizontal, maximum=99)
-        self.meanSlider.setValue(0)
-        self.meanValue = QtWidgets.QLabel('0')
-        self.meanSlider.valueChanged[int].connect(self.sliderEvent)
-        self.meanSlider.setFixedWidth(275)
-        self.varLabel = QtWidgets.QLabel('variance')
-        self.varSlider = QtWidgets.QSlider(minimum=1, orientation=QtCore.Qt.Horizontal, maximum=99)
-        self.varValue = QtWidgets.QLabel('0.01')
-        self.varSlider.valueChanged[int].connect(self.sliderEvent)
-        self.varSlider.setFixedWidth(275)
-        self.normalSliders = [self.meanLabel, self.meanSlider, self.meanValue, self.varLabel, self.varSlider, self.varValue]
-        for w in self.normalSliders:
-            w.setHidden(True)
+        # Slider 2
+        self.slider2Label = QtWidgets.QLabel('Mean')
+        self.slider2 = QtWidgets.QSlider(minimum=-99, orientation=QtCore.Qt.Horizontal, maximum=999)
+        self.slider2.setValue(0)
+        self.slider2Value = QtWidgets.QLabel('0')
+        self.slider2.valueChanged[int].connect(self.plotData)
+        self.slider2.setFixedWidth(275)
 
-        grid = QtWidgets.QGridLayout()
-        grid.addWidget(self.distSelector, 0, 0)
-        grid.addWidget(self.pLabel, 0, 1)
-        grid.addWidget(self.pValue, 0, 2)
-        grid.addWidget(self.pSlider, 0, 3)
-        grid.addWidget(self.meanLabel, 0, 1)
-        grid.addWidget(self.meanValue, 0, 2)
-        grid.addWidget(self.meanSlider, 0, 3)
-        grid.addWidget(self.varLabel, 1, 1)
-        grid.addWidget(self.varValue, 1, 2)
-        grid.addWidget(self.varSlider, 1, 3)
+        # Slider 3
+        self.slider3Label = QtWidgets.QLabel('Variance')
+        self.slider3 = QtWidgets.QSlider(minimum=1, orientation=QtCore.Qt.Horizontal, maximum=999)
+        self.slider3Value = QtWidgets.QLabel('0.01')
+        self.slider3.valueChanged[int].connect(self.plotData)
+        self.slider3.setFixedWidth(275)
+
+        # Slider 4
+        # TODO: Set number of bins here
+
+        dist = QtWidgets.QGridLayout()
+        dist.addWidget(QtWidgets.QLabel('Distribution:'), 0, 0)
+        dist.addWidget(self.distSelector, 0, 1)
+        dist.addItem(QtWidgets.QSpacerItem(0, 0, qsp.Expanding, qsp.Fixed), 0, 2)
+
+        self.sliders1 = QtWidgets.QHBoxLayout()
+        self.sliders1.addWidget(self.slider1Label)
+        self.sliders1.addItem(QtWidgets.QSpacerItem(10, 0, qsp.Fixed, qsp.Fixed))
+        self.sliders1.addWidget(self.slider1Value)
+        self.sliders1.addItem(QtWidgets.QSpacerItem(10, 0, qsp.Fixed, qsp.Fixed))
+        self.sliders1.addWidget(self.slider1)
+        self.sliders1.addItem(QtWidgets.QSpacerItem(0, 0, qsp.Expanding, qsp.Fixed))
+
+        self.sliders2 = QtWidgets.QHBoxLayout()
+        self.sliders2.addWidget(self.slider2Label)
+        self.sliders2.addItem(QtWidgets.QSpacerItem(15, 0, qsp.Fixed, qsp.Fixed))
+        self.sliders2.addWidget(self.slider2Value)
+        self.sliders2.addItem(QtWidgets.QSpacerItem(15, 0, qsp.Fixed, qsp.Fixed))
+        self.sliders2.addWidget(self.slider2)
+        self.sliders2.addItem(QtWidgets.QSpacerItem(0, 0, qsp.Expanding, qsp.Fixed))
+
+        self.sliders3 = QtWidgets.QHBoxLayout()
+        self.sliders3.addWidget(self.slider3Label)
+        self.sliders3.addItem(QtWidgets.QSpacerItem(15, 0, qsp.Fixed, qsp.Fixed))
+        self.sliders3.addWidget(self.slider3Value)
+        self.sliders3.addItem(QtWidgets.QSpacerItem(15, 0, qsp.Fixed, qsp.Fixed))
+        self.sliders3.addWidget(self.slider3)
+        self.sliders3.addItem(QtWidgets.QSpacerItem(0, 0, qsp.Expanding, qsp.Fixed))
+
         layout = QtWidgets.QVBoxLayout()
         layout.addWidget(toolbar)
-        layout.addLayout(grid)
+        layout.addLayout(dist)
+        layout.addItem(QtWidgets.QSpacerItem(0, 15, qsp.Expanding, qsp.Fixed))
+        layout.addLayout(self.sliders1)
+        layout.addLayout(self.sliders2)
+        layout.addItem(QtWidgets.QSpacerItem(0, 15, qsp.Expanding, qsp.Fixed))
+        layout.addLayout(self.sliders3)
         layout.addWidget(self.sc)
 
         # Create a placeholder widget to hold our toolbar and canvas.
@@ -96,43 +128,80 @@ class Fitter(QMainWindow):
         widget.setLayout(layout)
         self.setCentralWidget(widget)
 
+
     def changeDist(self):
 
-        if self.distSelector.currentText() == 'Geometric':
-            for w in self.geomSliders:
-                w.setHidden(False)
-            for w in self.normalSliders:
-                w.setHidden(True)
+        if self.dist is not None:
+            dist = self.dist.name
+        else:
+            dist = self.distSelector.currentText()
 
-        if self.distSelector.currentText() == 'Normal':
-            for w in self.geomSliders:
-                w.setHidden(True)
-            for w in self.normalSliders:
-                w.setHidden(False)
+        slider1Widgets = (self.sliders1.itemAt(i).widget() for i in range(self.sliders1.count()) if not isinstance(self.sliders1.itemAt(i), QtWidgets.QSpacerItem))
+        slider2Widgets = (self.sliders2.itemAt(i).widget() for i in range(self.sliders2.count()) if not isinstance(self.sliders2.itemAt(i), QtWidgets.QSpacerItem))
+        slider3Widgets = (self.sliders3.itemAt(i).widget() for i in range(self.sliders3.count()) if not isinstance(self.sliders3.itemAt(i), QtWidgets.QSpacerItem))
 
-    def sliderEvent(self):
+        if dist in ['Geometric', 'Exponential']:
+            for w in slider1Widgets:
+                w.show()
+            for w in slider2Widgets:
+                w.hide()
+            for w in slider3Widgets:
+                w.hide()
+            if dist == 'Geometric':
+                self.slider1Label.setText('p')
+            elif dist == 'Exponential':
+                self.slider1Label.setText('λ')
 
-        if len(self.sc.axes.lines) > 0:
-            self.sc.axes.lines.pop()
+        if dist in ['Normal', 'Gamma', 'Weibull']:
+            for w in slider1Widgets:
+                w.hide()
+            for w in slider2Widgets:
+                w.show()
+            for w in slider3Widgets:
+                w.show()
+            if dist == 'Normal':
+                self.slider2Label.setText('Mean')
+                self.slider3Label.setText('Variance')
+            elif dist == 'Gamma' or dist == 'Weibull':
+                self.slider2Label.setText('a')
+                self.slider3Label.setText('b')
 
-        if self.distSelector.currentText() == 'Geometric':
-            x = np.arange(1, 10)
-            p = self.pSlider.value() / 100
+        QtCore.QTimer.singleShot(10, lambda: self.resize(self.minimumSize()))
+
+    def plotData(self):
+
+        dist = self.distSelector.currentText()
+        self.sc.axes.clear()
+
+        if dist == 'Geometric':
+            self.sc.axes.hist(self.samples, bins=np.max(self.samples), density=True, color=(152/255, 200/255, 132/255), ec='white')
+        else:
+            self.sc.axes.hist(self.samples, bins=np.histogram_bin_edges(self.samples, 'fd'), density=True, color=(152/255, 200/255, 132/255), ec='white')
+
+        if dist == 'Geometric':
+            x = np.arange(1, np.max(self.samples))
+            p = self.slider1.value() / 1000
             f = ((1 - p) ** (x - 1)) * p
-            self.pValue.setText(str(round(p, 3)))
-        elif self.distSelector.currentText() == 'Normal':
-            mean = self.meanSlider.value() / 10
-            var = self.varSlider.value() / 10
-            self.meanValue.setText(str(round(mean, 3)))
-            self.varValue.setText(str(round(var, 3)))
-            x = np.linspace(norm.ppf(0.01, mean, var), norm.ppf(0.99, mean, var), 100)
-            f = norm.pdf(x, mean, var)
+            self.slider1Value.setText(str(round(p, 3)))
+        elif dist == 'Exponential':
+            lambd = self.slider1.value() / 100
+            x = np.linspace(expon.ppf(0.001, scale=1/lambd), expon.ppf(0.999, scale=1/lambd), 100)
+            f = expon.pdf(x, scale=1/lambd)
+            self.slider1Value.setText(str(round(lambd, 3)))
+        elif dist == 'Normal':
+            mean = self.slider2.value() / 100
+            var = self.slider3.value() / 100
+            std = np.sqrt(var)
+            self.slider2Value.setText(str(round(mean, 3)))
+            self.slider3Value.setText(str(round(var, 3)))
+            x = np.linspace(norm.ppf(0.001, loc=mean, scale=std), norm.ppf(0.999, loc=mean, scale=std), 100)
+            f = norm.pdf(x, loc=mean, scale=std)
 
         self.sc.axes.plot(x, f)
         self.sc.fig.canvas.draw_idle()
 
 
-def run_fitter(samples):
+def run_fitter(samples, dist=None):
     if not QApplication.instance():
         app = QApplication(sys.argv)
     else:
@@ -156,7 +225,7 @@ def run_fitter(samples):
     palette.setColor(QPalette.HighlightedText, QtCore.Qt.black)
     app.setPalette(palette)
 
-    window = Fitter(samples)
+    window = Fitter(samples, dist)
     window.show()
     QtWidgets.QApplication.setQuitOnLastWindowClosed(True)
     app.exec_()
@@ -166,7 +235,7 @@ def run_fitter(samples):
 class Bernoulli():
 
     def __init__(self):
-        pass
+        self.name = 'Bernoulli'
 
     def sample(self, p, size=None):
         """Get samples from Bern(p). The size argument is the number of samples (default 1)."""
@@ -209,13 +278,13 @@ class Bernoulli():
     def fit(self, samples):
         """Run the PyQt/MPL visualization."""
 
-        run_fitter(samples)
+        run_fitter(samples, self)
 
 
 class Geometric():
 
     def __init__(self):
-        pass
+        self.name = 'Geometric'
 
     def sample(self, p, size=None):
         """Get samples from Geom(p). The size argument is the number of samples (default 1)."""
@@ -250,13 +319,13 @@ class Geometric():
     def fit(self, samples):
         """Run the PyQt/MPL visualization."""
 
-        run_fitter(samples)
+        run_fitter(samples, self)
 
 
 class Uniform():
 
     def __init__(self):
-        pass
+        self.name = 'Uniform'
 
     def sample(self, a=0., b=1., size=None):
         """Get samples from Unif(a, b). The size argument is the number of samples (default 1)."""
@@ -275,13 +344,13 @@ class Uniform():
     def fit(self, samples):
         """Run the PyQt/MPL visualization."""
 
-        run_fitter(samples)
+        run_fitter(samples, self)
 
 
 class Normal():
 
     def __init__(self):
-        pass
+        self.name = 'Normal'
 
     def sample(self, mean=0., var=1., size=None):
         """Get samples from Norm(μ, σ^2). The size argument is the number of samples (default 1)."""
@@ -326,19 +395,19 @@ class Normal():
     def fit(self, samples):
         """Run the PyQt/MPL visualization."""
 
-        run_fitter(samples)
+        run_fitter(samples, self)
 
 
 class Exponential():
 
-    def init(self):
-        pass
+    def __init__(self):
+        self.name = 'Exponential'
 
     def sample(self, lambd=1., size=None):
         """Get samples from Exp(λ). The size argument is the number of samples (default 1)."""
 
-        if lambd < 0:
-            raise ValueError('lambd must be non-negative.')
+        if not lambd > 0:
+            raise ValueError('lambd must be greater than 0.')
 
         return np.random.exponential(scale=1/lambd, size=size)
 
@@ -346,8 +415,8 @@ class Exponential():
         """Calculate the negative log likelihood for a collection of random
         exponentially distributed samples, and a specified scale parameter lambd."""
 
-        if lambd < 0:
-            raise ValueError('lambd must be non-negative.')
+        if not lambd > 0:
+            raise ValueError('lambd must be greater than 0.')
 
         n = len(samples)
 
@@ -374,13 +443,13 @@ class Exponential():
     def fit(self, samples):
         """Run the PyQt/MPL visualization."""
 
-        run_fitter(samples)
+        run_fitter(samples, self)
 
 
 class Gamma():
 
     def __init__(self):
-        pass
+        self.name = 'Gamma'
 
     def sample(self, a, b=1., size=None):
         """Get samples from Gamma(a, b). The size argument is the number of samples (default 1)."""
@@ -416,13 +485,13 @@ class Gamma():
     def fit(self, samples):
         """Run the PyQt/MPL visualization."""
 
-        run_fitter(samples)
+        run_fitter(samples, self)
 
 
 class Weibull():
 
-    def __init__self(self):
-        pass
+    def __init__(self):
+        self.name = 'Weibull'
 
     def sample(self, a, b=1, size=None):
         """Get samples from Weibull(a, b). The shape parameter is a, the scale parameter is b (default 1).
@@ -459,4 +528,4 @@ class Weibull():
     def fit(self, samples):
         """Run the PyQt/MPL visualization."""
 
-        run_fitter(samples)
+        run_fitter(samples, self)
