@@ -163,7 +163,7 @@ def run_fitter(samples):
     app.quit()
 
 
-class Bernoulli:
+class Bernoulli():
 
     def __init__(self):
         pass
@@ -212,7 +212,7 @@ class Bernoulli:
         run_fitter(samples)
 
 
-class Geometric:
+class Geometric():
 
     def __init__(self):
         pass
@@ -253,7 +253,7 @@ class Geometric:
         run_fitter(samples)
 
 
-class Uniform:
+class Uniform():
 
     def __init__(self):
         pass
@@ -278,7 +278,7 @@ class Uniform:
         run_fitter(samples)
 
 
-class Normal:
+class Normal():
 
     def __init__(self):
         pass
@@ -329,7 +329,7 @@ class Normal:
         run_fitter(samples)
 
 
-class Exponential:
+class Exponential():
 
     def init(self):
         pass
@@ -377,7 +377,7 @@ class Exponential:
         run_fitter(samples)
 
 
-class Gamma:
+class Gamma():
 
     def __init__(self):
         pass
@@ -419,7 +419,7 @@ class Gamma:
         run_fitter(samples)
 
 
-class Weibull:
+class Weibull():
 
     def __init__self(self):
         pass
