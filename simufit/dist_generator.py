@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from scipy.optimize import minimize
 from scipy.stats import norm, expon
 import scipy.special
@@ -16,6 +17,51 @@ from PyQt5.QtGui import QPalette, QWheelEvent, QCursor, QPixmap
 from PyQt5.QtWidgets import QSizePolicy as qsp
 
 
+class Dataset(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Import Data")
+
+        self.statusBar = QtWidgets.QStatusBar()
+
+        layout = QtWidgets.QVBoxLayout()
+        gridLayout = QtWidgets.QGridLayout()
+        gridLayout.addWidget(QtWidgets.QLabel('File:'), 0, 0)
+        self.fileTB = QtWidgets.QTextBrowser()
+        self.fileTB.setFixedSize(QtCore.QSize(400, 20))
+        self.browseButton = QtWidgets.QPushButton('Browse...')
+        # self.browseButton.clicked.connect(self.browseDialog)
+        gridLayout.addWidget(self.fileTB, 0, 1, 1, 2)
+        gridLayout.addWidget(self.browseButton, 0, 3)
+
+        gridLayout.addWidget(QtWidgets.QLabel('Delimiter:'), 1, 0)
+        self.commaCB = QtWidgets.QCheckBox('Comma')
+        self.commaCB.setChecked(True)
+        self.semiCB = QtWidgets.QCheckBox('Semi-colon')
+        self.tabCB = QtWidgets.QCheckBox('Tab')
+        buttonGroup = QtWidgets.QButtonGroup(self)
+        buttonGroup.addButton(self.commaCB, 1)
+        buttonGroup.addButton(self.semiCB, 2)
+        buttonGroup.addButton(self.tabCB, 3)
+        gridLayout.addWidget(self.commaCB, 1, 1)
+        gridLayout.addWidget(self.semiCB, 1, 2)
+        gridLayout.addWidget(self.tabCB, 1, 3)
+
+        gridLayout.addWidget(QtWidgets.QLabel('Skip rows:'), 2, 0)
+        self.skipRows = QtWidgets.QLineEdit()
+        self.skipRows.setFixedSize(40, 24)
+        gridLayout.addWidget(self.skipRows)
+        gridLayout.addWidget(QtWidgets.QLabel('Use column:'), 3, 0)
+        self.useCol = QtWidgets.QLineEdit()
+        self.useCol.setFixedSize(40, 24)
+        gridLayout.addWidget(self.useCol)
+
+        layout.addLayout(gridLayout)
+        layout.addWidget(self.statusBar)
+        self.setLayout(layout)
+
+
+
 class MplCanvas(FigureCanvasQTAgg):
 
     def __init__(self, parent=None, width=5, height=4, dpi=100):
@@ -31,16 +77,25 @@ class Fitter(QMainWindow):
     def __init__(self, samples, dist=None):
         super(Fitter, self).__init__()
         self.setWindowTitle('Distribution Fitter')
+        self.datasetWindow = Dataset()
         self.samples = samples
         self.dist = dist
         self.initUI()
         self.changeDist()
-        self.plotData()
+        if self.samples is not None:
+            self.plotData()
 
     def initUI(self):
         """Sets up all the UI functionality."""
 
         ### Menu and Toolbars ###
+        menubar = self.menuBar()
+        fileMenu = menubar.addMenu('&File')
+        actionImport = QAction('Import data', self)
+        actionImport.setShortcut(QtGui.QKeySequence('Ctrl+I'))
+        actionImport.setStatusTip('Import a data file')
+        actionImport.triggered.connect(self.importData)
+        fileMenu.addAction(actionImport)
 
         self.sc = MplCanvas(self, width=8, height=6, dpi=100)
         self.sc.setSizePolicy(qsp.Fixed, qsp.Fixed)
@@ -128,6 +183,21 @@ class Fitter(QMainWindow):
         widget.setLayout(layout)
         self.setCentralWidget(widget)
 
+    def importData(self):
+        """Import a data file (csv, txt) and view as histogram."""
+
+        self.datasetWindow.show()
+
+        # fileFilter = "Data file (*.txt *.TXT *.csv *.CSV)"
+
+        # dialog = QFileDialog()
+        # filepath, _ = dialog.getOpenFileName(self, 'Open File', filter=fileFilter)
+
+        # if not filepath:
+        #     return
+
+        # self.samples = np.genfromtxt(filepath)
+
 
     def changeDist(self):
 
@@ -201,7 +271,7 @@ class Fitter(QMainWindow):
         self.sc.fig.canvas.draw_idle()
 
 
-def run_fitter(samples, dist=None):
+def run_fitter(samples=None, dist=None):
     if not QApplication.instance():
         app = QApplication(sys.argv)
     else:
