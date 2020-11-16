@@ -7,7 +7,28 @@ class IDistribution(ABC):
 
     def __init__(self):        
         super().__init__()    
-    
+
+    # General Functions
+    @abstractmethod
+    def clearSamples(self):
+        pass
+
+    @abstractmethod
+    def readCsv(self, filename):
+        pass
+
+    @abstractmethod
+    def display(self):
+        pass
+
+    @abstractmethod
+    def printReport(self):
+        pass
+
+    @abstractmethod
+    def reset(self):
+        pass
+
     # Distribution Parameters
     @abstractmethod
     def setSeed(self, seed):
@@ -18,19 +39,23 @@ class IDistribution(ABC):
         pass
 
     @abstractmethod
-    def setRange(self, min, max):
+    def setSize(self, size):
+        pass
+
+    @abstractmethod
+    def getSize(self):
         pass
 
     @abstractmethod
     def getRange(self):
-        pass
+        pass    
 
+    @abstractmethod
+    def generateSamples(self, **kwargs):
+        pass
+        
     @abstractmethod
     def setSamples(self, samples):
-        pass
-
-    @abstractmethod
-    def readCsv(self, filename):
         pass
 
     @abstractmethod
@@ -43,15 +68,7 @@ class IDistribution(ABC):
 
     @abstractmethod
     def setRandomDistribution(self):
-        pass
-
-    @abstractmethod
-    def display(self):
-        pass
-
-    @abstractmethod
-    def printReport(self):
-        pass
+        pass    
 
     # Statistical Methods
     @abstractmethod
@@ -78,15 +95,10 @@ class IDistribution(ABC):
     def getLexisRatio(self):
         pass
 
-
     # Descriptive Properties
     @abstractmethod
-    def isDiscrete(self):
-        pass
-
-    @abstractmethod
-    def isContinuous(self):
-        pass    
+    def getMeasureType(self):
+        pass   
 
     # Graphical Methods
     @abstractmethod
@@ -136,6 +148,10 @@ class IDistribution(ABC):
     # Fitting Methods
     @abstractmethod
     def fit(self, samples):
+        pass
+
+    @abstractmethod
+    def MLE(self, **kwargs):
         pass
 
     @abstractmethod

@@ -3,6 +3,7 @@ from scipy.optimize import minimize
 from scipy.stats import norm, expon, gamma
 import scipy.special
 import sys
+from simufit.Types import MeasureType as mt
 
 import matplotlib
 matplotlib.use('Qt5Agg')
@@ -182,6 +183,9 @@ class Fitter(QMainWindow):
         else:
             self.sc.axes.hist(self.samples, bins=np.histogram_bin_edges(self.samples, 'fd'), density=True, color=(152/255, 200/255, 132/255), ec='white')
 
+        x = ""
+        f = ""
+
         if dist == 'Geometric':
             x = np.arange(1, np.max(self.samples))
             p = self.slider1.value() / 1000
@@ -247,9 +251,13 @@ class Bernoulli():
 
     def __init__(self):
         self.name = 'Bernoulli'
+        self.measure_type = mt.DISCRETE
 
-    def sample(self, p, size=None):
+    def sample(self, p, size=None, seed=None):
         """Get samples from Bern(p). The size argument is the number of samples (default 1)."""
+
+        if seed is not None:
+            np.random.seed(seed)
 
         if p <= 0 or p >= 1:
             raise ValueError('p must be in the range (0, 1).')
@@ -296,9 +304,13 @@ class Geometric():
 
     def __init__(self):
         self.name = 'Geometric'
+        self.measure_type = mt.DISCRETE
 
-    def sample(self, p, size=None):
+    def sample(self, p, size=None, seed=None):        
         """Get samples from Geom(p). The size argument is the number of samples (default 1)."""
+
+        if seed is not None:
+            np.random.seed(seed)
 
         if p <= 0 or p >= 1:
             raise ValueError('p must be in the range (0, 1).')
@@ -337,9 +349,13 @@ class Uniform():
 
     def __init__(self):
         self.name = 'Uniform'
+        self.measure_type = mt.CONTINUOUS
 
-    def sample(self, a=0., b=1., size=None):
+    def sample(self, a=0., b=1., size=None, seed=None):
         """Get samples from Unif(a, b). The size argument is the number of samples (default 1)."""
+
+        if seed is not None:
+            np.random.seed(seed)
 
         return np.random.uniform(low=a, high=b, size=size)
 
@@ -362,9 +378,13 @@ class Normal():
 
     def __init__(self):
         self.name = 'Normal'
+        self.measure_type = mt.CONTINUOUS
 
-    def sample(self, mean=0., var=1., size=None):
+    def sample(self, mean=0., var=1., size=None, seed=None):
         """Get samples from Norm(μ, σ^2). The size argument is the number of samples (default 1)."""
+
+        if seed is not None:
+            np.random.seed(seed)
 
         if var < 0:
             raise ValueError('var must be non-negative.')
@@ -413,9 +433,13 @@ class Exponential():
 
     def __init__(self):
         self.name = 'Exponential'
+        self.measure_type = mt.CONTINUOUS
 
-    def sample(self, lambd=1., size=None):
+    def sample(self, lambd=1., size=None, seed=None):
         """Get samples from Exp(λ). The size argument is the number of samples (default 1)."""
+
+        if seed is not None:
+            np.random.seed(seed)
 
         if not lambd > 0:
             raise ValueError('lambd must be greater than 0.')
@@ -461,9 +485,13 @@ class Gamma():
 
     def __init__(self):
         self.name = 'Gamma'
+        self.measure_type = mt.CONTINUOUS
 
-    def sample(self, a, b=1., size=None):
+    def sample(self, a, b=1., size=None, seed=None):
         """Get samples from Gamma(a, b). The size argument is the number of samples (default 1)."""
+
+        if seed is not None:
+            np.random.seed(seed)
 
         if not a > 0 or not b > 0:
             raise ValueError('a and b must be greater than 0.')
@@ -503,10 +531,14 @@ class Weibull():
 
     def __init__(self):
         self.name = 'Weibull'
+        self.measure_type = mt.CONTINUOUS
 
-    def sample(self, a, b=1, size=None):
+    def sample(self, a, b=1, size=None, seed=None):
         """Get samples from Weibull(a, b). The shape parameter is a, the scale parameter is b (default 1).
         The size argument is the number of samples (default 1)."""
+
+        if seed is not None:
+            np.random.seed(seed)
 
         if not a > 0 or not b > 0:
             raise ValueError('a and b must be greater than 0.')
