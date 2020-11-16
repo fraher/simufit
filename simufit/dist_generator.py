@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from simufit.Dataset import Dataset
 from scipy.optimize import minimize
 from scipy.stats import norm, expon
 import scipy.special
@@ -11,55 +12,10 @@ matplotlib.use('Qt5Agg')
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 
-from PyQt5 import QtWidgets, QtGui, QtCore, QtSql
-from PyQt5.QtWidgets import QWidget, QApplication, QMainWindow, QAction, QFileDialog, QInputDialog
-from PyQt5.QtGui import QPalette, QWheelEvent, QCursor, QPixmap
+from PyQt5 import QtWidgets, QtGui, QtCore
+from PyQt5.QtWidgets import QWidget, QApplication, QMainWindow, QAction, QFileDialog
+from PyQt5.QtGui import QPalette
 from PyQt5.QtWidgets import QSizePolicy as qsp
-
-
-class Dataset(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Import Data")
-
-        self.statusBar = QtWidgets.QStatusBar()
-
-        layout = QtWidgets.QVBoxLayout()
-        gridLayout = QtWidgets.QGridLayout()
-        gridLayout.addWidget(QtWidgets.QLabel('File:'), 0, 0)
-        self.fileTB = QtWidgets.QTextBrowser()
-        self.fileTB.setFixedSize(QtCore.QSize(400, 20))
-        self.browseButton = QtWidgets.QPushButton('Browse...')
-        # self.browseButton.clicked.connect(self.browseDialog)
-        gridLayout.addWidget(self.fileTB, 0, 1, 1, 2)
-        gridLayout.addWidget(self.browseButton, 0, 3)
-
-        gridLayout.addWidget(QtWidgets.QLabel('Delimiter:'), 1, 0)
-        self.commaCB = QtWidgets.QCheckBox('Comma')
-        self.commaCB.setChecked(True)
-        self.semiCB = QtWidgets.QCheckBox('Semi-colon')
-        self.tabCB = QtWidgets.QCheckBox('Tab')
-        buttonGroup = QtWidgets.QButtonGroup(self)
-        buttonGroup.addButton(self.commaCB, 1)
-        buttonGroup.addButton(self.semiCB, 2)
-        buttonGroup.addButton(self.tabCB, 3)
-        gridLayout.addWidget(self.commaCB, 1, 1)
-        gridLayout.addWidget(self.semiCB, 1, 2)
-        gridLayout.addWidget(self.tabCB, 1, 3)
-
-        gridLayout.addWidget(QtWidgets.QLabel('Skip rows:'), 2, 0)
-        self.skipRows = QtWidgets.QLineEdit()
-        self.skipRows.setFixedSize(40, 24)
-        gridLayout.addWidget(self.skipRows)
-        gridLayout.addWidget(QtWidgets.QLabel('Use column:'), 3, 0)
-        self.useCol = QtWidgets.QLineEdit()
-        self.useCol.setFixedSize(40, 24)
-        gridLayout.addWidget(self.useCol)
-
-        layout.addLayout(gridLayout)
-        layout.addWidget(self.statusBar)
-        self.setLayout(layout)
-
 
 
 class MplCanvas(FigureCanvasQTAgg):
@@ -77,7 +33,7 @@ class Fitter(QMainWindow):
     def __init__(self, samples, dist=None):
         super(Fitter, self).__init__()
         self.setWindowTitle('Distribution Fitter')
-        self.datasetWindow = Dataset()
+        self.datasetWindow = Dataset(self)
         self.samples = samples
         self.dist = dist
         self.initUI()
@@ -187,17 +143,6 @@ class Fitter(QMainWindow):
         """Import a data file (csv, txt) and view as histogram."""
 
         self.datasetWindow.show()
-
-        # fileFilter = "Data file (*.txt *.TXT *.csv *.CSV)"
-
-        # dialog = QFileDialog()
-        # filepath, _ = dialog.getOpenFileName(self, 'Open File', filter=fileFilter)
-
-        # if not filepath:
-        #     return
-
-        # self.samples = np.genfromtxt(filepath)
-
 
     def changeDist(self):
 
