@@ -1,3 +1,9 @@
+trigger:
+  branches:
+   include:
+     - master
+     
+
 variables:
    major: 0
    minor: 0      
