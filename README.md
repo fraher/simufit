@@ -7,7 +7,7 @@
 import simufit as sf
 from simufit import DistributionType as dt
 ```
-### Create an instance of the Distribution class and set the distribution type:
+### Create an instance of the Distribution class and set the distribution type: 
 ```
 x = sf.Distribution()
 x.setDistribution(dt.UNIFORM)
