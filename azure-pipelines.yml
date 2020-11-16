@@ -1,7 +1,7 @@
 variables:
    major: 0
    minor: 0
-   SIMUFIT_VERSION: $(major).$(minor)$(Rev:.r)
+   SIMUFIT_VERSION: "$(major).$(minor)$(Rev:.r)"
 name: $(major).$(minor)$(Rev:.r)
 
 jobs:
