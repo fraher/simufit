@@ -1,6 +1,6 @@
 variables:
    major: 0
-   minor: 0
+   minor: 0      
 name: $(major).$(minor)$(Rev:.r)
 
 jobs:
@@ -10,8 +10,7 @@ jobs:
     - task: UsePythonVersion@0
     - bash: |
         python -m pip install --upgrade pip
-        pip install wheel
-        os.environ['SIMUFIT_VERSION'] = "$(major).$(minor)$(Rev:.r)"
+        pip install wheel        
         python setup.py bdist_wheel
     - task: PublishBuildArtifacts@1
       inputs: {pathtoPublish: 'dist'}
