@@ -52,7 +52,7 @@ Distribution:  UNIFORM
 x.fit() 
 x.Distribution.MLE(x._samples, use_minimizer=True, x0=0.42)
 
-
+import simufit as sf;from simufit import DistributionType as dt;x = sf.Distribution();x.setDistribution(dt.UNIFORM);x.generateSamples(a=10,b=20,size=200,seed=123)
 
 
 

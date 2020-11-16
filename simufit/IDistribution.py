@@ -151,5 +151,9 @@ class IDistribution(ABC):
         pass
 
     @abstractmethod
+    def MLE(self, **kwargs):
+        pass
+
+    @abstractmethod
     def identifyDistribution(self):
         pass

@@ -252,7 +252,19 @@ class Distribution(IDistribution):
     def fit(self):
         """Run the PyQt/MPL visualization for the loaded distribution"""
         self.Distribution.fit(self._samples)
+
+    def MLE(self, **kwargs):
+        """Run the MLE method for the loaded distribution"""
+        
+        result = []
+        
+        if len(kwargs) > 0:
+            result = self.Distribution.MLE(self._samples, **kwargs)
+        else:
+            result = self.Distribution.MLE(self._samples)
     
+        print(result) # Placeholder until set to report
+
     def identifyDistribution(self):
         """Executes logic to identify the most likely distribution"""
         # TODO: Write Method

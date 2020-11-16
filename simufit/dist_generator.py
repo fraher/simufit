@@ -183,6 +183,9 @@ class Fitter(QMainWindow):
         else:
             self.sc.axes.hist(self.samples, bins=np.histogram_bin_edges(self.samples, 'fd'), density=True, color=(152/255, 200/255, 132/255), ec='white')
 
+        x = ""
+        f = ""
+
         if dist == 'Geometric':
             x = np.arange(1, np.max(self.samples))
             p = self.slider1.value() / 1000
