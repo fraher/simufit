@@ -20,3 +20,13 @@ samples = x.Distribution.sample(p=0.5,size=10) # In the future we can directly s
 x.setSamples(samples)
 x.fit() 
 x.Distribution.MLE(x._samples, use_minimizer=True, x0=0.42)
+
+
+
+
+
+-- Create whl
+python setup.py bdist_wheel
+python setup_linux.py bdist_wheel
+-- Create requirements.txt
+pip wheel -r .\src\requirements.txt
