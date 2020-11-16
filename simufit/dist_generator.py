@@ -10,6 +10,7 @@ matplotlib.use('Qt5Agg')
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
+import matplotlib.colors as mcolors
 
 from PyQt5 import QtWidgets, QtGui, QtCore, QtSql
 from PyQt5.QtWidgets import QWidget, QApplication, QMainWindow, QAction, QFileDialog, QInputDialog
@@ -25,6 +26,50 @@ class MplCanvas(FigureCanvasQTAgg):
         self.axes = self.fig.add_subplot(111)
         self.axes.set_facecolor((53/255, 53/255, 53/255))
         super(MplCanvas, self).__init__(self.fig)
+
+class Histogram(QMainWindow):
+
+    def __init__(self, samples, bins=10, comparison_distribution=None):
+        super(Histogram, self).__init__()
+        self.setWindowTitle('Histogram')
+        self.samples = samples
+        self.comparison_distribution = comparison_distribution
+        self.initUI()        
+        self.plotData(bins=bins)
+
+    def initUI(self):
+        """Sets up all the UI functionality."""
+
+        ### Menu and Toolbars ###
+
+        self.sc = MplCanvas(self, width=8, height=6, dpi=100)
+        self.sc.setSizePolicy(qsp.Fixed, qsp.Fixed)
+
+        # Create toolbar, passing canvas as first parameter, parent (self, the MainWindow) as second.
+        toolbar = NavigationToolbar(self.sc, self)
+
+        # Create grid layout for selecting distribution            
+        layout = QtWidgets.QVBoxLayout()
+        layout.addWidget(toolbar)    
+        layout.addItem(QtWidgets.QSpacerItem(0, 15, qsp.Expanding, qsp.Fixed))
+        layout.addItem(QtWidgets.QSpacerItem(0, 15, qsp.Expanding, qsp.Fixed))
+        layout.addWidget(self.sc)
+
+        # Create a placeholder widget to hold our toolbar and canvas.
+        widget = QWidget()
+        widget.setLayout(layout)
+        self.setCentralWidget(widget)
+
+    def plotData(self, bins):        
+        self.sc.axes.clear()
+        alpha = 1.0
+
+        if self.comparison_distribution is not None:            
+            alpha = 0.5
+            self.sc.axes.hist(self.comparison_distribution.getSamples(), label=str(self.comparison_distribution._type).replace("DistributionType.","").title(), bins=bins, color="#3498DB", ec='white', alpha=alpha)  
+        self.sc.axes.hist(self.samples, bins=bins, label="Samples", color="#27AE60", ec='white', alpha=alpha)  
+        self.sc.axes.legend()   
+        self.sc.fig.canvas.draw_idle()
 
 
 class Fitter(QMainWindow):
@@ -215,6 +260,35 @@ class Fitter(QMainWindow):
         self.sc.axes.plot(x, f)
         self.sc.fig.canvas.draw_idle()
 
+def show_histogram(samples, bins=None, comparison_distribution=None):
+    if not QApplication.instance():
+        app = QApplication(sys.argv)
+    else:
+        app = QApplication.instance()
+
+    # Set the color scheme
+    app.setStyle("Fusion")
+    palette = QPalette()
+    palette.setColor(QPalette.Window, QtGui.QColor(53, 53, 53))
+    palette.setColor(QPalette.WindowText, QtCore.Qt.white)
+    palette.setColor(QPalette.Base, QtGui.QColor(25, 25, 25))
+    palette.setColor(QPalette.AlternateBase, QtGui.QColor(53, 53, 53))
+    palette.setColor(QPalette.ToolTipBase, QtCore.Qt.white)
+    palette.setColor(QPalette.ToolTipText, QtCore.Qt.white)
+    palette.setColor(QPalette.Text, QtCore.Qt.cyan)
+    palette.setColor(QPalette.Button, QtGui.QColor(53, 53, 53))
+    palette.setColor(QPalette.ButtonText, QtCore.Qt.white)
+    palette.setColor(QPalette.BrightText, QtCore.Qt.red)
+    palette.setColor(QPalette.Link, QtGui.QColor(42, 130, 218))
+    palette.setColor(QPalette.Highlight, QtGui.QColor(42, 130, 218))
+    palette.setColor(QPalette.HighlightedText, QtCore.Qt.black)
+    app.setPalette(palette)
+
+    window = Histogram(samples, bins, comparison_distribution)
+    window.show()
+    QtWidgets.QApplication.setQuitOnLastWindowClosed(True)
+    app.exec_()
+    app.quit()
 
 def run_fitter(samples, dist=None):
     if not QApplication.instance():
@@ -246,8 +320,21 @@ def run_fitter(samples, dist=None):
     app.exec_()
     app.quit()
 
+class Display():
+    def fit(self, samples):
+        """Run the PyQt/MPL visualization."""
+        run_fitter(samples, self)
 
-class Bernoulli():
+    def histogram(self, samples, bins=None, comparison_distribution=None):
+        """Displays the histogram of a given collection of samples, optionally a separate distribution can
+        be passed to show a comparison"""
+        if comparison_distribution.getSamples() is not None:
+            if len(samples) != len(comparison_distribution.getSamples()):
+                print("Distribution sample sizes do not match")
+                return
+        show_histogram(samples, bins, comparison_distribution)
+
+class Bernoulli(Display):
 
     def __init__(self):
         self.name = 'Bernoulli'
@@ -294,13 +381,7 @@ class Bernoulli():
         else:
             return np.mean(samples)
 
-    def fit(self, samples):
-        """Run the PyQt/MPL visualization."""
-
-        run_fitter(samples, self)
-
-
-class Geometric():
+class Geometric(Display):
 
     def __init__(self):
         self.name = 'Geometric'
@@ -339,13 +420,7 @@ class Geometric():
         else:
             return 1 / np.mean(samples)
 
-    def fit(self, samples):
-        """Run the PyQt/MPL visualization."""
-
-        run_fitter(samples, self)
-
-
-class Uniform():
+class Uniform(Display):
 
     def __init__(self):
         self.name = 'Uniform'
@@ -368,13 +443,7 @@ class Uniform():
 
         return a, b
 
-    def fit(self, samples):
-        """Run the PyQt/MPL visualization."""
-
-        run_fitter(samples, self)
-
-
-class Normal():
+class Normal(Display):
 
     def __init__(self):
         self.name = 'Normal'
@@ -423,13 +492,7 @@ class Normal():
 
             return mu, var
 
-    def fit(self, samples):
-        """Run the PyQt/MPL visualization."""
-
-        run_fitter(samples, self)
-
-
-class Exponential():
+class Exponential(Display):
 
     def __init__(self):
         self.name = 'Exponential'
@@ -475,13 +538,7 @@ class Exponential():
             lambd = n / np.sum(samples)
             return lambd
 
-    def fit(self, samples):
-        """Run the PyQt/MPL visualization."""
-
-        run_fitter(samples, self)
-
-
-class Gamma():
+class Gamma(Display):
 
     def __init__(self):
         self.name = 'Gamma'
@@ -521,13 +578,7 @@ class Gamma():
             return self.negLogL(*x, samples)
         return minimize(nll, x0, args=samples, method='Nelder-Mead')
 
-    def fit(self, samples):
-        """Run the PyQt/MPL visualization."""
-
-        run_fitter(samples, self)
-
-
-class Weibull():
+class Weibull(Display):
 
     def __init__(self):
         self.name = 'Weibull'
@@ -567,8 +618,3 @@ class Weibull():
         def nll(x, samples):
             return self.negLogL(*x, samples)
         return minimize(nll, x0, args=samples, method='Nelder-Mead')
-
-    def fit(self, samples):
-        """Run the PyQt/MPL visualization."""
-
-        run_fitter(samples, self)
