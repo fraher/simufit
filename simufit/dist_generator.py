@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.optimize import minimize
-from scipy.stats import norm, expon
+from scipy.stats import norm, expon, gamma
 import scipy.special
 import sys
 from simufit.Types import MeasureType as mt
@@ -69,7 +69,7 @@ class Fitter(QMainWindow):
 
         # Slider 2
         self.slider2Label = QtWidgets.QLabel('Mean')
-        self.slider2 = QtWidgets.QSlider(minimum=-99, orientation=QtCore.Qt.Horizontal, maximum=999)
+        self.slider2 = QtWidgets.QSlider(minimum=-999, orientation=QtCore.Qt.Horizontal, maximum=999)
         self.slider2.setValue(0)
         self.slider2Value = QtWidgets.QLabel('0')
         self.slider2.valueChanged[int].connect(self.plotData)
@@ -161,9 +161,13 @@ class Fitter(QMainWindow):
             for w in slider3Widgets:
                 w.show()
             if dist == 'Normal':
+                self.slider2.setMinimum(-999)
+                self.slider3.setMinimum(-999)
                 self.slider2Label.setText('Mean')
                 self.slider3Label.setText('Variance')
             elif dist == 'Gamma' or dist == 'Weibull':
+                self.slider2.setMinimum(1)
+                self.slider3.setMinimum(1)
                 self.slider2Label.setText('a')
                 self.slider3Label.setText('b')
 
@@ -197,6 +201,13 @@ class Fitter(QMainWindow):
             self.slider3Value.setText(str(round(var, 3)))
             x = np.linspace(norm.ppf(0.001, loc=mean, scale=std), norm.ppf(0.999, loc=mean, scale=std), 100)
             f = norm.pdf(x, loc=mean, scale=std)
+        elif dist == 'Gamma':
+            a = self.slider2.value() / 100
+            b = self.slider3.value() / 100
+            self.slider2Value.setText(str(round(a, 3)))
+            self.slider3Value.setText(str(round(b, 3)))
+            x = np.linspace(gamma.ppf(0.001, a, scale=b), gamma.ppf(0.999, a, scale=b), 100)
+            f = gamma.pdf(x, a, scale=b)
 
         self.sc.axes.plot(x, f)
         self.sc.fig.canvas.draw_idle()
