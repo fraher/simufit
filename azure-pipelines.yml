@@ -1,3 +1,8 @@
+variables:
+   major: 0
+   minor: 0
+name: $(major).$(minor)$(Rev:.r)
+
 jobs:
 - job: linux
   pool: {vmImage: 'Ubuntu-16.04'}
@@ -6,6 +11,7 @@ jobs:
     - bash: |
         python -m pip install --upgrade pip
         pip install wheel
+        os.environ['SIMUFIT_VERSION'] = "$(major).$(minor)$(Rev:.r)"
         python setup.py bdist_wheel
     - task: PublishBuildArtifacts@1
       inputs: {pathtoPublish: 'dist'}
