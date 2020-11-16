@@ -1,0 +1,17 @@
+variables:
+   major: 0
+   minor: 0      
+name: $(major).$(minor)$(Rev:.r)
+
+jobs:
+- job: linux
+  pool: {vmImage: 'Ubuntu-16.04'}
+  steps:
+    - task: UsePythonVersion@0    
+    - bash: |
+        export BUILD_NUMBER="$(Build.BuildNumber)"
+        python -m pip install --upgrade pip
+        pip install wheel        
+        python setup.py bdist_wheel
+    - task: PublishBuildArtifacts@1
+      inputs: {pathtoPublish: 'dist'}

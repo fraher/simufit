@@ -1,5 +1,6 @@
 from simufit.IDistribution import IDistribution
 from simufit.Types import DistributionType as dt
+from simufit.Types import MeasureType as mt
 from simufit.Report import DistributionReport as dr
 import simufit.dist_generator as dg
 import random as rand
@@ -16,101 +17,137 @@ class Distribution(IDistribution):
         self._size = None
         self._samples = list()        
         self._distribution_report = dr()     
-        self._continuous = None
-        self._discrete = None   
+        self._measureType = mt.UNKNOWN        
         self._type = None
         self.Distribution = dt.UNKNOWN
         pass
 
-    # Distribution Parameters    
-    def setSeed(self, seed):
-        """This method stores a seed value for randomization"""
-        self._seed = seed
-    
-    def getSeed(self):
-        """This method returns the seed value set for randomization"""
-        return self._seed
-    
-    def setRange(self, min, max):
-        """This method sets the range of values for randomization"""
-        self._range = [min, max]
-    
-    def getRange(self):
-        """This method retrieves the range of values for randomization"""
-        return self._range
-    
-    def setSamples(self, samples):        
-        """This method loads a collection of samples"""        
-        self._samples = samples
+    # General Functions    
+    def clearSamples(self):        
+        self._samples = None
+        self._range = [None, None]
 
-    def getSamples(self):
-        """This method returns the current collection of generated samples"""
-        return self._samples
-    
+    def reset(self):
+        self._seed = None
+        self._range = [None, None]
+        self._size = None
+        self._samples = list()        
+        self._distribution_report = dr()     
+        self._measureType = mt.UNKNOWN          
+        self._type = None
+        self.Distribution = dt.UNKNOWN        
+
     def readCsv(self, filename):
         """This method loads a collection of samples from a CSV file"""
         # TODO: Write Method
         raise NotImplementedError
 
-    def setDistribution(self, distribution_type):
-        """This method takes in a DistributionType and creates a new object 
-        based on classes defined in dist_generator"""
-
-        if distribution_type == dt.GEOMETRIC:            
-            self._type = distribution_type
-            self.Distribution = dg.Geometric()
-
-        if distribution_type == dt.UNIFORM:
-            self._type = distribution_type
-            self.Distribution = dg.Uniform()
-        
-        if distribution_type == dt.NORMAL:
-            self._type = distribution_type
-            self.Distribution = dg.Normal()
-
-        if distribution_type == dt.EXPONENTIAL:
-            self._type = distribution_type
-            self.Distribution = dg.Exponential()
-        
-        if distribution_type == dt.GAMMA:
-            self._type = distribution_type
-            self.Distribution = dg.Gamma()
-        
-        if distribution_type == dt.BERNOULLI:
-            self._type = distribution_type
-            self.Distribution = dg.Bernoulli()
-            
-        if distribution_type == dt.BINOMIAL:
-            self._type = distribution_type
-            self.Distribution = None # TODO: Add dg.Binomial()
-        
-        if distribution_type == dt.BERNOULLI:
-            self._type = distribution_type
-            self.Distribution = dg.Weibull()
-
-        if distribution_type == None:            
-            self._type = dt.UNKNOWN
-                        
-    def setRandomDistribution(self):
-        """This method selects a random distribution of DistributionType 
-        and creates a new object based on classes defined in dist_generator"""
-
-        self.setDistribution(rand.choice(list(dt)))
-
     def display(self):
         """This method prints the parameters specific to the Distribution object"""
-
         print("Seed: ", self._seed)
         print("Range: ", self._range[0], "-", self._range[1])
         print("Size: ", self._size)
         print("Samples: ", self._samples)
-        print("Continuous: ", self._continuous)
-        print("Discrete:", self._discrete)
-        print("Distribution: ", self._type)
+        print("Measure Type: ", str(self._measureType).replace("MeasureType.",""))        
+        print("Distribution: ", str(self._type).replace("DistributionType.",""))
 
     def printReport(self):
         """This method displays the distribution fitting report"""
         dr.printReport()
+
+    # Distribution Parameters    
+    def setSeed(self, seed):
+        """This method stores a seed value for randomization"""
+        if len(self._samples) > 0:
+            print("Cannot change seed while there are samples in the object, must clear samples first.")
+        self._seed = seed
+    
+    def getSeed(self):
+        """This method returns the seed value set for randomization"""
+        return self._seed
+
+    def setSize(self, size):
+        """This method stores a size value for randomization"""
+        if len(self._samples) > 0:
+            print("Cannot change size while there are samples in the object, must clear samples first.")
+        self._size = size
+    
+    def getSize(self):
+        """This method returns the size value set for randomization"""
+        return self._size
+        
+    def getRange(self):
+        """This method retrieves the range of values from the sample set"""
+        return self._range
+    
+    def generateSamples(self, **kwargs):        
+        """This method loads a collection of samples and updates the seed, size and range as applicable"""    
+        # Use or Update Seed
+        if 'seed' in kwargs:
+            if self._seed is None:
+                self._seed = kwargs.get('seed')
+
+        if 'seed' not in kwargs and self._seed is not None:
+            kwargs['seed'] = self._seed
+
+        # Use or Update Size
+        if 'size' in kwargs:
+            if self._size is None:
+                self._size = kwargs.get('size')
+
+        if 'size' not in kwargs and self._size is not None:
+            kwargs['size'] = self._size
+
+        self._samples = self.Distribution.sample(**kwargs) # Update the samples
+        self._range = [min(self._samples), max(self._samples)] # Update the range
+
+    def setSamples(self, samples):        
+        """This method loads a collection of samples"""        
+        self._samples = samples
+        self._range = [min(self._samples), max(self._samples)] # Update the range
+
+    def getSamples(self):
+        """This method returns the current collection of generated samples"""
+        return self._samples
+        
+    def setDistribution(self, distribution_type):
+        """This method takes in a DistributionType and creates a new object 
+        based on classes defined in dist_generator"""
+        if distribution_type == dt.GEOMETRIC:                        
+            self.Distribution = dg.Geometric()            
+
+        if distribution_type == dt.UNIFORM:            
+            self.Distribution = dg.Uniform()
+        
+        if distribution_type == dt.NORMAL:            
+            self.Distribution = dg.Normal()
+
+        if distribution_type == dt.EXPONENTIAL:            
+            self.Distribution = dg.Exponential()
+        
+        if distribution_type == dt.GAMMA:            
+            self.Distribution = dg.Gamma()
+        
+        if distribution_type == dt.BERNOULLI:            
+            self.Distribution = dg.Bernoulli()
+            
+        if distribution_type == dt.BINOMIAL:            
+            self.Distribution = None # TODO: Add dg.Binomial()
+        
+        if distribution_type == dt.BERNOULLI:            
+            self.Distribution = dg.Weibull()
+
+        if distribution_type is None:            
+            self._type = dt.UNKNOWN
+            self._measureType = mt.UNKNOWN
+        elif distribution_type is not None:
+            self._type = distribution_type
+            self._measureType = self.Distribution.measure_type
+                        
+    def setRandomDistribution(self):
+        """This method selects a random distribution of DistributionType 
+        and creates a new object based on classes defined in dist_generator"""
+        self.setDistribution(rand.choice(list(dt)))    
 
     # Statistical Methods    
     def getMedian(self):
@@ -143,16 +180,10 @@ class Distribution(IDistribution):
         # TODO: Write Method
         raise NotImplementedError
 
-    # Descriptive Properties    
-    def isDiscrete(self):
-        """This method returns the True/False value for the loaded distribution 
-        identifying whether it is Discrete or not"""
-        # TODO: Write Method
-        raise NotImplementedError
-    
-    def isContinuous(self):
-        """This method returns the True/False value for the loaded distribution 
-        identifying whether it is Continuous or not"""
+    # Descriptive Properties        
+    def getMeasureType(self):
+        """This method returns whther the value for the loaded distribution 
+        identifying is Continuous or not"""
         # TODO: Write Method
         raise NotImplementedError
 
@@ -217,12 +248,23 @@ class Distribution(IDistribution):
         # TODO: Write Method
         raise NotImplementedError
 
-    # Fitting Methods
-    
+    # Fitting Methods    
     def fit(self):
         """Run the PyQt/MPL visualization for the loaded distribution"""
         self.Distribution.fit(self._samples)
+
+    def MLE(self, **kwargs):
+        """Run the MLE method for the loaded distribution"""
+        
+        result = []
+        
+        if len(kwargs) > 0:
+            result = self.Distribution.MLE(self._samples, **kwargs)
+        else:
+            result = self.Distribution.MLE(self._samples)
     
+        print(result) # Placeholder until set to report
+
     def identifyDistribution(self):
         """Executes logic to identify the most likely distribution"""
         # TODO: Write Method

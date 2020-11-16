@@ -2,9 +2,10 @@ import numpy as np
 import pandas as pd
 from simufit.Dataset import Dataset
 from scipy.optimize import minimize
-from scipy.stats import norm, expon
+from scipy.stats import norm, expon, gamma
 import scipy.special
 import sys
+from simufit.Types import MeasureType as mt
 
 import matplotlib
 matplotlib.use('Qt5Agg')
@@ -79,7 +80,7 @@ class Fitter(QMainWindow):
 
         # Slider 2
         self.slider2Label = QtWidgets.QLabel('Mean')
-        self.slider2 = QtWidgets.QSlider(minimum=-99, orientation=QtCore.Qt.Horizontal, maximum=999)
+        self.slider2 = QtWidgets.QSlider(minimum=-999, orientation=QtCore.Qt.Horizontal, maximum=999)
         self.slider2.setValue(0)
         self.slider2Value = QtWidgets.QLabel('0')
         self.slider2.valueChanged[int].connect(self.plotData)
@@ -175,9 +176,13 @@ class Fitter(QMainWindow):
             for w in slider3Widgets:
                 w.show()
             if dist == 'Normal':
+                self.slider2.setMinimum(-999)
+                self.slider3.setMinimum(-999)
                 self.slider2Label.setText('Mean')
                 self.slider3Label.setText('Variance')
             elif dist == 'Gamma' or dist == 'Weibull':
+                self.slider2.setMinimum(1)
+                self.slider3.setMinimum(1)
                 self.slider2Label.setText('a')
                 self.slider3Label.setText('b')
 
@@ -192,6 +197,9 @@ class Fitter(QMainWindow):
             self.sc.axes.hist(self.samples, bins=np.max(self.samples), density=True, color=(152/255, 200/255, 132/255), ec='white')
         else:
             self.sc.axes.hist(self.samples, bins=np.histogram_bin_edges(self.samples, 'fd'), density=True, color=(152/255, 200/255, 132/255), ec='white')
+
+        x = ""
+        f = ""
 
         if dist == 'Geometric':
             x = np.arange(1, np.max(self.samples))
@@ -211,6 +219,13 @@ class Fitter(QMainWindow):
             self.slider3Value.setText(str(round(var, 3)))
             x = np.linspace(norm.ppf(0.001, loc=mean, scale=std), norm.ppf(0.999, loc=mean, scale=std), 100)
             f = norm.pdf(x, loc=mean, scale=std)
+        elif dist == 'Gamma':
+            a = self.slider2.value() / 100
+            b = self.slider3.value() / 100
+            self.slider2Value.setText(str(round(a, 3)))
+            self.slider3Value.setText(str(round(b, 3)))
+            x = np.linspace(gamma.ppf(0.001, a, scale=b), gamma.ppf(0.999, a, scale=b), 100)
+            f = gamma.pdf(x, a, scale=b)
 
         self.sc.axes.plot(x, f)
         self.sc.fig.canvas.draw_idle()
@@ -251,9 +266,13 @@ class Bernoulli():
 
     def __init__(self):
         self.name = 'Bernoulli'
+        self.measure_type = mt.DISCRETE
 
-    def sample(self, p, size=None):
+    def sample(self, p, size=None, seed=None):
         """Get samples from Bern(p). The size argument is the number of samples (default 1)."""
+
+        if seed is not None:
+            np.random.seed(seed)
 
         if p <= 0 or p >= 1:
             raise ValueError('p must be in the range (0, 1).')
@@ -300,9 +319,13 @@ class Geometric():
 
     def __init__(self):
         self.name = 'Geometric'
+        self.measure_type = mt.DISCRETE
 
-    def sample(self, p, size=None):
+    def sample(self, p, size=None, seed=None):        
         """Get samples from Geom(p). The size argument is the number of samples (default 1)."""
+
+        if seed is not None:
+            np.random.seed(seed)
 
         if p <= 0 or p >= 1:
             raise ValueError('p must be in the range (0, 1).')
@@ -341,9 +364,13 @@ class Uniform():
 
     def __init__(self):
         self.name = 'Uniform'
+        self.measure_type = mt.CONTINUOUS
 
-    def sample(self, a=0., b=1., size=None):
+    def sample(self, a=0., b=1., size=None, seed=None):
         """Get samples from Unif(a, b). The size argument is the number of samples (default 1)."""
+
+        if seed is not None:
+            np.random.seed(seed)
 
         return np.random.uniform(low=a, high=b, size=size)
 
@@ -366,9 +393,13 @@ class Normal():
 
     def __init__(self):
         self.name = 'Normal'
+        self.measure_type = mt.CONTINUOUS
 
-    def sample(self, mean=0., var=1., size=None):
+    def sample(self, mean=0., var=1., size=None, seed=None):
         """Get samples from Norm(μ, σ^2). The size argument is the number of samples (default 1)."""
+
+        if seed is not None:
+            np.random.seed(seed)
 
         if var < 0:
             raise ValueError('var must be non-negative.')
@@ -417,9 +448,13 @@ class Exponential():
 
     def __init__(self):
         self.name = 'Exponential'
+        self.measure_type = mt.CONTINUOUS
 
-    def sample(self, lambd=1., size=None):
+    def sample(self, lambd=1., size=None, seed=None):
         """Get samples from Exp(λ). The size argument is the number of samples (default 1)."""
+
+        if seed is not None:
+            np.random.seed(seed)
 
         if not lambd > 0:
             raise ValueError('lambd must be greater than 0.')
@@ -465,9 +500,13 @@ class Gamma():
 
     def __init__(self):
         self.name = 'Gamma'
+        self.measure_type = mt.CONTINUOUS
 
-    def sample(self, a, b=1., size=None):
+    def sample(self, a, b=1., size=None, seed=None):
         """Get samples from Gamma(a, b). The size argument is the number of samples (default 1)."""
+
+        if seed is not None:
+            np.random.seed(seed)
 
         if not a > 0 or not b > 0:
             raise ValueError('a and b must be greater than 0.')
@@ -507,10 +546,14 @@ class Weibull():
 
     def __init__(self):
         self.name = 'Weibull'
+        self.measure_type = mt.CONTINUOUS
 
-    def sample(self, a, b=1, size=None):
+    def sample(self, a, b=1, size=None, seed=None):
         """Get samples from Weibull(a, b). The shape parameter is a, the scale parameter is b (default 1).
         The size argument is the number of samples (default 1)."""
+
+        if seed is not None:
+            np.random.seed(seed)
 
         if not a > 0 or not b > 0:
             raise ValueError('a and b must be greater than 0.')
