@@ -49,7 +49,7 @@ Measure Type:  CONTINUOUS
 Distribution:  UNIFORM
 ..........
 
-x.fit() 
+x.fit()
 x.Distribution.MLE(x._samples, use_minimizer=True, x0=0.42)
 
 import simufit as sf;from simufit import DistributionType as dt;x = sf.Distribution();x.setDistribution(dt.UNIFORM);x.generateSamples(a=10,b=20,size=200,seed=123)
@@ -61,3 +61,15 @@ python setup.py bdist_wheel
 python setup_linux.py bdist_wheel
 -- Create requirements.txt
 pip wheel -r .\src\requirements.txt
+
+Example of loading data from CSV
+
+from simufit.dist_generator import run_fitter
+run_fitter()
+
+In the file menu, click Import data
+Click Browse... button and select testData.csv
+Use comma delimiter, skiprows = 1, use columnn = 1
+Click import, histogram should load.
+In the main window, select Normal distribution.
+You should now be able to use sliders to fit the data.
