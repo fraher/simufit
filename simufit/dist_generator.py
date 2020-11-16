@@ -1,4 +1,6 @@
 import numpy as np
+import pandas as pd
+from simufit.Dataset import Dataset
 from scipy.optimize import minimize
 from scipy.stats import norm, expon, gamma
 import scipy.special
@@ -12,9 +14,9 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationTool
 from matplotlib.figure import Figure
 import matplotlib.colors as mcolors
 
-from PyQt5 import QtWidgets, QtGui, QtCore, QtSql
-from PyQt5.QtWidgets import QWidget, QApplication, QMainWindow, QAction, QFileDialog, QInputDialog
-from PyQt5.QtGui import QPalette, QWheelEvent, QCursor, QPixmap
+from PyQt5 import QtWidgets, QtGui, QtCore
+from PyQt5.QtWidgets import QWidget, QApplication, QMainWindow, QAction, QFileDialog
+from PyQt5.QtGui import QPalette
 from PyQt5.QtWidgets import QSizePolicy as qsp
 
 
@@ -77,16 +79,25 @@ class Fitter(QMainWindow):
     def __init__(self, samples, dist=None):
         super(Fitter, self).__init__()
         self.setWindowTitle('Distribution Fitter')
+        self.datasetWindow = Dataset(self)
         self.samples = samples
         self.dist = dist
         self.initUI()
         self.changeDist()
-        self.plotData()
+        if self.samples is not None:
+            self.plotData()
 
     def initUI(self):
         """Sets up all the UI functionality."""
 
         ### Menu and Toolbars ###
+        menubar = self.menuBar()
+        fileMenu = menubar.addMenu('&File')
+        actionImport = QAction('Import data', self)
+        actionImport.setShortcut(QtGui.QKeySequence('Ctrl+I'))
+        actionImport.setStatusTip('Import a data file')
+        actionImport.triggered.connect(self.importData)
+        fileMenu.addAction(actionImport)
 
         self.sc = MplCanvas(self, width=8, height=6, dpi=100)
         self.sc.setSizePolicy(qsp.Fixed, qsp.Fixed)
@@ -174,6 +185,10 @@ class Fitter(QMainWindow):
         widget.setLayout(layout)
         self.setCentralWidget(widget)
 
+    def importData(self):
+        """Import a data file (csv, txt) and view as histogram."""
+
+        self.datasetWindow.show()
 
     def changeDist(self):
 
@@ -290,7 +305,7 @@ def show_histogram(samples, bins=None, comparison_distribution=None):
     app.exec_()
     app.quit()
 
-def run_fitter(samples, dist=None):
+def run_fitter(samples=None, dist=None):
     if not QApplication.instance():
         app = QApplication(sys.argv)
     else:
