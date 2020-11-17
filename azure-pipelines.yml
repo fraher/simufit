@@ -1,7 +1,5 @@
 trigger:
- branches:   
-  include: 
-    - master
+- master
      
 variables:
    major: 0
