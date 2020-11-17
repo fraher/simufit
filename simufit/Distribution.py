@@ -187,17 +187,11 @@ class Distribution(IDistribution):
         # TODO: Write Method
         raise NotImplementedError
 
-    # Graphical Methods    
-    def drawHistogram(self):
-        """This method opens a graph and displays a histogram of the sample set"""
-        # TODO: Write Method
-        raise NotImplementedError
-    
-    def drawHistogram(self, dataset):
-        """This method opens a graph and displays two histograms, one of the sample set
-        alongside a different dataset for comparison"""
-        # TODO: Write Method
-        raise NotImplementedError
+    # Graphical Methods        
+    def drawHistogram(self, bins=None, comparison_distribution=None):
+        """This method opens a graph and displays one or two histograms, one of the sample set
+        alongside a different dataset for comparison if dataset is selected"""
+        self.Distribution.histogram(self._samples, bins, comparison_distribution)
     
     def drawSatterPlot(self):
         """This method opens a graph and displays a scatter plot of the sample set"""

@@ -100,13 +100,9 @@ class IDistribution(ABC):
     def getMeasureType(self):
         pass   
 
-    # Graphical Methods
+    # Graphical Methods    
     @abstractmethod
-    def drawHistogram(self):
-        pass
-
-    @abstractmethod
-    def drawHistogram(self, dataset):
+    def drawHistogram(self, comparison_distribution):
         pass
 
     @abstractmethod
