@@ -1,8 +1,9 @@
 import numpy as np
 import pandas as pd
 from simufit.Dataset import Dataset
+from simufit.Helpers import mergeBins
 from scipy.optimize import minimize
-from scipy.stats import norm, expon, gamma
+import scipy.stats
 import scipy.special
 import sys
 from simufit.Types import MeasureType as mt
@@ -36,7 +37,7 @@ class Histogram(QMainWindow):
         self.setWindowTitle('Histogram')
         self.samples = samples
         self.comparison_distribution = comparison_distribution
-        self.initUI()        
+        self.initUI()
         self.plotData(bins=bins)
 
     def initUI(self):
@@ -50,9 +51,9 @@ class Histogram(QMainWindow):
         # Create toolbar, passing canvas as first parameter, parent (self, the MainWindow) as second.
         toolbar = NavigationToolbar(self.sc, self)
 
-        # Create grid layout for selecting distribution            
+        # Create grid layout for selecting distribution
         layout = QtWidgets.QVBoxLayout()
-        layout.addWidget(toolbar)    
+        layout.addWidget(toolbar)
         layout.addItem(QtWidgets.QSpacerItem(0, 15, qsp.Expanding, qsp.Fixed))
         layout.addItem(QtWidgets.QSpacerItem(0, 15, qsp.Expanding, qsp.Fixed))
         layout.addWidget(self.sc)
@@ -62,15 +63,15 @@ class Histogram(QMainWindow):
         widget.setLayout(layout)
         self.setCentralWidget(widget)
 
-    def plotData(self, bins):        
+    def plotData(self, bins):
         self.sc.axes.clear()
         alpha = 1.0
 
-        if self.comparison_distribution is not None:            
+        if self.comparison_distribution is not None:
             alpha = 0.5
-            self.sc.axes.hist(self.comparison_distribution.getSamples(), label=str(self.comparison_distribution._type).replace("DistributionType.","").title(), bins=bins, color="#3498DB", ec='white', alpha=alpha)  
-        self.sc.axes.hist(self.samples, bins=bins, label="Samples", color="#27AE60", ec='white', alpha=alpha)  
-        self.sc.axes.legend()   
+            self.sc.axes.hist(self.comparison_distribution.getSamples(), label=str(self.comparison_distribution._type).replace("DistributionType.","").title(), bins=bins, color="#3498DB", ec='white', alpha=alpha)
+        self.sc.axes.hist(self.samples, bins=bins, label="Samples", color="#27AE60", ec='white', alpha=alpha)
+        self.sc.axes.legend()
         self.sc.fig.canvas.draw_idle()
 
 
@@ -253,7 +254,7 @@ class Fitter(QMainWindow):
             self.slider1Value.setText(str(round(p, 3)))
         elif dist == 'Exponential':
             lambd = self.slider1.value() / 100
-            x = np.linspace(expon.ppf(0.001, scale=1/lambd), expon.ppf(0.999, scale=1/lambd), 100)
+            x = np.linspace(scipy.stats.expon.ppf(0.001, scale=1/lambd), scipy.stats.expon.ppf(0.999, scale=1/lambd), 100)
             f = expon.pdf(x, scale=1/lambd)
             self.slider1Value.setText(str(round(lambd, 3)))
         elif dist == 'Normal':
@@ -262,14 +263,14 @@ class Fitter(QMainWindow):
             std = np.sqrt(var)
             self.slider2Value.setText(str(round(mean, 3)))
             self.slider3Value.setText(str(round(var, 3)))
-            x = np.linspace(norm.ppf(0.001, loc=mean, scale=std), norm.ppf(0.999, loc=mean, scale=std), 100)
+            x = np.linspace(scipy.stats.norm.ppf(0.001, loc=mean, scale=std), scipy.stats.norm.ppf(0.999, loc=mean, scale=std), 100)
             f = norm.pdf(x, loc=mean, scale=std)
         elif dist == 'Gamma':
             a = self.slider2.value() / 100
             b = self.slider3.value() / 100
             self.slider2Value.setText(str(round(a, 3)))
             self.slider3Value.setText(str(round(b, 3)))
-            x = np.linspace(gamma.ppf(0.001, a, scale=b), gamma.ppf(0.999, a, scale=b), 100)
+            x = np.linspace(scipy.stats.gamma.ppf(0.001, a, scale=b), scipy.stats.gamma.ppf(0.999, a, scale=b), 100)
             f = gamma.pdf(x, a, scale=b)
 
         self.sc.axes.plot(x, f)
@@ -402,7 +403,7 @@ class Geometric(Display):
         self.name = 'Geometric'
         self.measure_type = mt.DISCRETE
 
-    def sample(self, p, size=None, seed=None):        
+    def sample(self, p, size=None, seed=None):
         """Get samples from Geom(p). The size argument is the number of samples (default 1)."""
 
         if seed is not None:
@@ -507,6 +508,15 @@ class Normal(Display):
 
             return mu, var
 
+    def GOF(self, samples, mle_mu, mle_var):
+        """Return the chi-squared goodness of fit statistic and p-value for a set of MLE paramters."""
+
+        edges, f_exp = mergeBins(samples, scipy.stats.norm, mle_mu, np.sqrt(mle_var))
+        f_obs, _ = np.histogram(a=samples, bins=edges)
+        chisq, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=len(f_obs)-3)
+
+        return chisq
+
 class Exponential(Display):
 
     def __init__(self):
@@ -552,6 +562,15 @@ class Exponential(Display):
             n = len(samples)
             lambd = n / np.sum(samples)
             return lambd
+
+    def GOF(self, samples, mle_lambda):
+        """Return the chi-squared goodness of fit statistic and p-value for a set of MLE paramters."""
+
+        edges, f_exp = mergeBins(samples, scipy.stats.expon, 0, 1/mle_lambda)
+        f_obs, _ = np.histogram(a=samples, bins=edges)
+        chisq, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=len(f_obs)-2)
+
+        return chisq
 
 class Gamma(Display):
 
