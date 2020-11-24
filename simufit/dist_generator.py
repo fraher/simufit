@@ -100,8 +100,12 @@ class Fitter(QMainWindow):
         actionImport.triggered.connect(self.importData)
         fileMenu.addAction(actionImport)
 
+        canvasHBox = QtWidgets.QHBoxLayout()
+        canvasHBox.addItem(QtWidgets.QSpacerItem(25, 0, qsp.Fixed, qsp.Fixed))
         self.sc = MplCanvas(self, width=8, height=6, dpi=100)
         self.sc.setSizePolicy(qsp.Fixed, qsp.Fixed)
+        canvasHBox.addWidget(self.sc)
+        canvasHBox.addItem(QtWidgets.QSpacerItem(0, 0, qsp.Expanding, qsp.Fixed))
 
         # Create toolbar, passing canvas as first parameter, parent (self, the MainWindow) as second.
         toolbar = NavigationToolbar(self.sc, self)
@@ -110,7 +114,7 @@ class Fitter(QMainWindow):
         self.distSelector = QtWidgets.QComboBox()
         self.distSelector.setFixedSize(QtCore.QSize(100, 24))
         if self.dist is None:
-            dists = ['Geometric', 'Uniform', 'Normal', 'Exponential', 'Gamma']
+            dists = ['Bernoulli', 'Binomial', 'Geometric', 'Uniform', 'Normal', 'Exponential', 'Gamma', 'Weibull']
             for dist in dists:
                 self.distSelector.addItem(dist)
         else:
@@ -122,7 +126,7 @@ class Fitter(QMainWindow):
         self.slider1 = QtWidgets.QSlider(minimum=1, orientation=QtCore.Qt.Horizontal, maximum=999)
         self.slider1Value = QtWidgets.QLabel('0.01')
         self.slider1.valueChanged[int].connect(self.plotData)
-        self.slider1.setFixedWidth(275)
+        self.slider1.setFixedWidth(700)
 
         # Slider 2
         self.slider2Label = QtWidgets.QLabel('Mean')
@@ -130,14 +134,14 @@ class Fitter(QMainWindow):
         self.slider2.setValue(0)
         self.slider2Value = QtWidgets.QLabel('0')
         self.slider2.valueChanged[int].connect(self.plotData)
-        self.slider2.setFixedWidth(275)
+        self.slider2.setFixedWidth(700)
 
         # Slider 3
         self.slider3Label = QtWidgets.QLabel('Variance')
         self.slider3 = QtWidgets.QSlider(minimum=1, orientation=QtCore.Qt.Horizontal, maximum=999)
         self.slider3Value = QtWidgets.QLabel('0.01')
         self.slider3.valueChanged[int].connect(self.plotData)
-        self.slider3.setFixedWidth(275)
+        self.slider3.setFixedWidth(700)
 
         # Slider 4
         # TODO: Set number of bins here
@@ -179,7 +183,7 @@ class Fitter(QMainWindow):
         layout.addLayout(self.sliders2)
         layout.addItem(QtWidgets.QSpacerItem(0, 15, qsp.Expanding, qsp.Fixed))
         layout.addLayout(self.sliders3)
-        layout.addWidget(self.sc)
+        layout.addLayout(canvasHBox)
 
         # Create a placeholder widget to hold our toolbar and canvas.
         widget = QWidget()
@@ -202,19 +206,31 @@ class Fitter(QMainWindow):
         slider2Widgets = (self.sliders2.itemAt(i).widget() for i in range(self.sliders2.count()) if not isinstance(self.sliders2.itemAt(i), QtWidgets.QSpacerItem))
         slider3Widgets = (self.sliders3.itemAt(i).widget() for i in range(self.sliders3.count()) if not isinstance(self.sliders3.itemAt(i), QtWidgets.QSpacerItem))
 
-        if dist in ['Geometric', 'Exponential']:
+        if dist in ['Bernoulli', 'Geometric', 'Exponential']:
             for w in slider1Widgets:
                 w.show()
             for w in slider2Widgets:
                 w.hide()
             for w in slider3Widgets:
                 w.hide()
-            if dist == 'Geometric':
+            if dist in ['Bernoulli', 'Geometric']:
                 self.slider1Label.setText('p')
             elif dist == 'Exponential':
                 self.slider1Label.setText('λ')
 
-        if dist in ['Normal', 'Gamma', 'Weibull']:
+        elif dist == 'Binomial':
+            for w in slider1Widgets:
+                w.show()
+            for w in slider2Widgets:
+                w.show()
+            for w in slider3Widgets:
+                w.hide()
+            self.slider1Label.setText('p')
+            self.slider2Label.setText('n')
+            self.slider2.setMinimum(0)
+            self.slider2.setMaximum(100)
+
+        elif dist in ['Normal', 'Gamma', 'Weibull']:
             for w in slider1Widgets:
                 w.hide()
             for w in slider2Widgets:
@@ -239,18 +255,42 @@ class Fitter(QMainWindow):
         dist = self.distSelector.currentText()
         self.sc.axes.clear()
 
-        if dist == 'Geometric':
-            self.sc.axes.hist(self.samples, bins=np.max(self.samples), density=True, color=(152/255, 200/255, 132/255), ec='white')
+        if dist == 'Bernoulli':
+            x, y = np.unique(self.samples, return_counts=True)
+            self.sc.axes.scatter(x, y, alpha=0.5, color='lightskyblue', ec='white', label='Data')
+            self.sc.axes.vlines(x, ymin=0, ymax=y)
+        elif dist in ['Binomial', 'Geometric']:
+            x, y = np.unique(self.samples, return_counts=True)
+            self.sc.axes.scatter(x, y, alpha=0.5, color='lightskyblue', ec='white', label='Data')
+            self.sc.axes.vlines(x, ymin=0, ymax=y)
+            self.sc.axes.set_xticks(np.arange(1, np.max(self.samples)+1))
         else:
-            self.sc.axes.hist(self.samples, bins=np.histogram_bin_edges(self.samples, 'fd'), density=True, color=(152/255, 200/255, 132/255), ec='white')
+            self.sc.axes.hist(self.samples, bins=np.histogram_bin_edges(self.samples, 'fd'), density=True, color=(152/255, 200/255, 132/255), ec='white', label='Data')
 
         x = ""
         f = ""
 
-        if dist == 'Geometric':
-            x = np.arange(1, np.max(self.samples))
+        if dist == 'Bernoulli':
+            n = len(self.samples)
             p = self.slider1.value() / 1000
-            f = ((1 - p) ** (x - 1)) * p
+            self.slider1Value.setText(str(round(p, 3)))
+            x = np.arange(2)
+            y = np.array([(1 - p) * n, p * n])
+            self.sc.axes.scatter(x, y, alpha=0.5, color='lemonchiffon', ec='white', label='Fit')
+            self.sc.axes.vlines(x, ymin=[0, 0], ymax=y)
+        elif dist == 'Binomial':
+            m = len(self.samples)
+            p = self.slider1.value() / 1000
+            self.slider1Value.setText(str(round(p, 3)))
+            n = self.slider2.value()
+            self.slider2Value.setText(str(n))
+            x = np.arange(np.max(self.samples)+1)
+            f = scipy.stats.binom.pmf(k=x, n=n, p=p) * m
+        elif dist == 'Geometric':
+            n = len(self.samples)
+            x = np.arange(1, np.max(self.samples)+1)
+            p = self.slider1.value() / 1000
+            f = n * (((1 - p) ** (x - 1)) * p)
             self.slider1Value.setText(str(round(p, 3)))
         elif dist == 'Exponential':
             lambd = self.slider1.value() / 100
@@ -271,10 +311,22 @@ class Fitter(QMainWindow):
             self.slider2Value.setText(str(round(a, 3)))
             self.slider3Value.setText(str(round(b, 3)))
             x = np.linspace(scipy.stats.gamma.ppf(0.001, a, scale=b), scipy.stats.gamma.ppf(0.999, a, scale=b), 100)
-            f = gamma.pdf(x, a, scale=b)
+            f = scipy.stats.gamma.pdf(x, a, scale=b)
+        elif dist == 'Weibull':
+            a = self.slider2.value() / 100
+            b = self.slider3.value() / 100
+            self.slider2Value.setText(str(round(a, 3)))
+            self.slider3Value.setText(str(round(b, 3)))
+            x = np.linspace(scipy.stats.weibull_min.ppf(0.001, a, scale=b), scipy.stats.weibull_min.ppf(0.999, a, scale=b), 100)
+            f = scipy.stats.weibull_min.pdf(x, a, scale=b)
 
-        self.sc.axes.plot(x, f)
-        self.sc.fig.canvas.draw_idle()
+        self.sc.axes.plot(x, f, label='Fit')
+        self.sc.axes.set_ylim(bottom=0)
+        self.sc.axes.set_ylabel('Frequency', fontsize=14)
+        self.sc.axes.set_xlabel('x', fontsize=14)
+        self.sc.axes.tick_params(axis='both', labelsize=14)
+        self.sc.axes.legend()
+        self.sc.fig.canvas.draw()
 
 def show_histogram(samples, bins=None, comparison_distribution=None):
     if not QApplication.instance():
@@ -314,6 +366,7 @@ def run_fitter(samples=None, dist=None):
 
     # Set the color scheme
     app.setStyle("Fusion")
+    app.setStyleSheet("QComboBox{font-size: 16pt} QLabel{font-size: 16pt;}")
     palette = QPalette()
     palette.setColor(QPalette.Window, QtGui.QColor(53, 53, 53))
     palette.setColor(QPalette.WindowText, QtCore.Qt.white)
@@ -371,7 +424,7 @@ class Bernoulli(Display):
         samples[mask1] = 0
         samples[mask2] = 1
 
-        return samples
+        return samples.astype(np.int64)
 
     def negLogL(self, p, samples):
         """Calculate the negative log likelihood for a collection of random
@@ -392,10 +445,71 @@ class Bernoulli(Display):
                 raise ValueError('Supply an initial guess x0=p to the optimizer.')
             if x0 <= 0 or x0 >= 1:
                 raise ValueError('p must be in the range (0, 1). Supply an initial guess in this range.')
-            return minimize(self.negLogL, x0, args=samples, method='Nelder-Mead')
+            res = minimize(self.negLogL, x0, args=samples, method='Nelder-Mead')
+            if res.status == 1:
+                print(f'Warning: Optimizer failed to converge with initial guess {x0}. Returned None for MLE values. Try another initial guess.')
+                return None
+            else:
+                return res.x
 
         else:
             return np.mean(samples)
+
+class Binomial(Display):
+
+    def __init__(self):
+        self.name = 'Binomial'
+        self.measure_type = mt.DISCRETE
+
+    def sample(self, n, p, size=None, seed=None):
+        """Get samples from Bin(n, p). The size argument is the number of samples (default 1)."""
+
+        if seed is not None:
+            np.random.seed(seed)
+
+        if type(n) != int or n < 0 or p <= 0 or p >= 1:
+            raise ValueError('n must be an integer >= 0. p must be in the range (0, 1).')
+
+        return np.random.binomial(n, p, size=size)
+
+    def negLogL(self, p, n, samples):
+        """Calculate the negative log likelihood for a collection of random
+        Bernoulli-distributed samples, and a specified p."""
+
+        return (np.sum(scipy.special.comb(n, samples)) + np.sum(samples) * np.log(p) + (n * len(samples) - np.sum(samples)) * np.log(1 - p)) * -1
+
+    def MLE(self, n, samples, use_minimizer=False, x0=None):
+        """Returns the maximum likelihood estimate of parameter p, given a collection of samples.
+        The Binomial parameter n must be known or estimated to use this function."""
+
+        if use_minimizer:
+            if x0 is None:
+                raise ValueError('Supply an initial guess x0=p to the optimizer.')
+            if x0 <= 0 or x0 >= 1:
+                raise ValueError('p must be in the range (0, 1).')
+
+            res = minimize(self.negLogL, x0, args=(n, samples), method='Nelder-Mead')
+            if res.status == 1:
+                print(f'Warning: Optimizer failed to converge with initial guess {x0}. Returned None for MLE values. Try another initial guess.')
+                return None
+            else:
+                return res.x
+        else:
+            return np.mean(samples) / n
+
+    def GOF(self, samples, n, mle_p):
+        """Returns the chi-squared goodness of fit statistic for a set of MLE paramters."""
+
+        edges, f_exp = mergeBins(samples, scipy.stats.binom, n, mle_p)
+        f_obs, _ = np.histogram(a=samples, bins=edges+1)
+        chisq, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=len(f_obs)-2)
+
+        # if chisq < scipy.stats.chi2.isf(0.05, len(f_obs)-2):
+        #     print('yay')
+        # else:
+        #     print('NAY')
+
+        return chisq
 
 class Geometric(Display):
 
@@ -431,10 +545,29 @@ class Geometric(Display):
                 raise ValueError('Supply an initial guess x0=p to the optimizer.')
             if x0 <= 0 or x0 >= 1:
                 raise ValueError('p must be in the range (0, 1). Supply an initial guess in this range.')
-            return minimize(self.negLogL, x0, args=samples, method='Nelder-Mead')
+            res = minimize(self.negLogL, x0, args=samples, method='Nelder-Mead')
+            if res.status == 1:
+                print(f'Warning: Optimizer failed to converge with initial guess {x0}. Returned None for MLE values. Try another initial guess.')
+                return None
+            else:
+                return res.x
 
         else:
             return 1 / np.mean(samples)
+
+    def GOF(self, samples, mle_p):
+        """Returns the chi-squared goodness of fit statistic for a set of MLE paramters."""
+
+        edges, f_exp = mergeBins(samples, scipy.stats.geom, mle_p)
+        f_obs, _ = np.histogram(a=samples, bins=edges+1)
+        chisq, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=len(f_obs)-2)
+
+        if chisq < scipy.stats.chi2.isf(0.05, len(f_obs)-2):
+            print('yay')
+        else:
+            print('NAY')
+
+        return chisq
 
 class Uniform(Display):
 
@@ -500,7 +633,12 @@ class Normal(Display):
                 raise ValueError('var must be non-negative. Supply an initial guess x0=(mean, var) with a positive var.')
             def nll(x, samples):
                 return self.negLogL(*x, samples)
-            return minimize(nll, x0, args=samples, method='Nelder-Mead')
+            res = minimize(nll, x0, args=samples, method='Nelder-Mead')
+            if res.status == 1:
+                print(f'Warning: Optimizer failed to converge with initial guess {x0}. Returned None for MLE values. Try another initial guess.')
+                return None, None
+            else:
+                return res.x
 
         else:
             mu = np.mean(samples)
@@ -556,7 +694,12 @@ class Exponential(Display):
                 raise ValueError('Supply an initial guess x0=lambd to the optimizer.')
             if x0 < 0:
                 raise ValueError('lambd must be non-negative. Supply an positive initial guess x0=lambd.')
-            return minimize(self.negLogL, x0, args=samples)
+            res = minimize(self.negLogL, x0, args=samples)
+            if res.status == 1:
+                print(f'Warning: Optimizer failed to converge with initial guess {x0}. Returned None for MLE values. Try another initial guess.')
+                return None
+            else:
+                return res.x
 
         else:
             n = len(samples)
@@ -566,7 +709,7 @@ class Exponential(Display):
     def GOF(self, samples, mle_lambda):
         """Return the chi-squared goodness of fit statistic and p-value for a set of MLE paramters."""
 
-        edges, f_exp = mergeBins(samples, scipy.stats.expon, 0, 1/mle_lambda)
+        edges, f_exp = mergeBins(samples, scipy.stats.expon, 1/mle_lambda)
         f_obs, _ = np.histogram(a=samples, bins=edges)
         chisq, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=len(f_obs)-2)
 
@@ -597,11 +740,10 @@ class Gamma(Display):
 
         return ((a - 1) * np.sum(np.log(samples)) - n * scipy.special.gamma(a) - n * a * np.log(b) - (np.sum(samples) / b)) * -1
 
-    def MLE(self, samples, x0=None):
+    def MLE(self, samples, x0):
         """Calculate the maximum likelihood estimator (MLE) for a collection of
-        random gamma-distributed samples. Returns the MLE a and b.
-        If use_minimizer=True, provide a initial guess for the optimizer in
-        form x0=(a, b)."""
+        random gamma-distributed samples. Returns the MLE a and b. Provide an
+        initial guess for the optimizer in form x0=(a, b)."""
 
         if x0 is None:
             raise ValueError('Supply an initial guess x0=(a,b) to the optimizer.')
@@ -610,7 +752,22 @@ class Gamma(Display):
 
         def nll(x, samples):
             return self.negLogL(*x, samples)
-        return minimize(nll, x0, args=samples, method='Nelder-Mead')
+
+        res = minimize(nll, x0, args=samples, method='Nelder-Mead')
+        if res.status == 1:
+            print(f'Warning: Optimizer failed to converge with initial guess {x0}. Returned None for MLE values. Try another initial guess.')
+            return None, None
+        else:
+            return res.x
+
+    def GOF(self, samples, mle_a, mle_b):
+        """Return the chi-squared goodness of fit statistic and p-value for a set of MLE paramters."""
+
+        edges, f_exp = mergeBins(samples, scipy.stats.gamma, mle_a, mle_b)
+        f_obs, _ = np.histogram(a=samples, bins=edges)
+        chisq, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=len(f_obs)-3)
+
+        return chisq
 
 class Weibull(Display):
 
@@ -636,13 +793,12 @@ class Weibull(Display):
 
         n = len(samples)
 
-        return (n * np.log(b) - n * np.log(a) + (b - 1) * np.sum(np.log(samples / a)) - np.sum(np.power((samples / a), b))) * -1
+        return (n * np.log(a) - n * np.log(b) + (a - 1) * np.sum(np.log(samples / b)) - np.sum(np.power((samples / b), a))) * -1
 
-    def MLE(self, samples, x0=None):
+    def MLE(self, samples, x0):
         """Calculate the maximum likelihood estimator (MLE) for a collection of
-        random weibull-distributed samples. Returns the MLE a and b.
-        If use_minimizer=True, provide a initial guess for the optimizer in
-        form x0=(a, b)."""
+        random weibull-distributed samples. Returns the MLE a and b. Provide an
+        initial guess for the optimizer in form x0=(a, b)."""
 
         if x0 is None:
             raise ValueError('Supply an initial guess x0=(a,b) to the optimizer.')
@@ -651,4 +807,24 @@ class Weibull(Display):
 
         def nll(x, samples):
             return self.negLogL(*x, samples)
-        return minimize(nll, x0, args=samples, method='Nelder-Mead')
+
+        res = minimize(nll, x0, args=samples, method='Nelder-Mead')
+        if res.status == 1:
+            print(f'Warning: Optimizer failed to converge with initial guess {x0}. Returned None for MLE values. Try another initial guess.')
+            return None, None
+        else:
+            return res.x
+
+    def GOF(self, samples, mle_a, mle_b):
+        """Return the chi-squared goodness of fit statistic and p-value for a set of MLE paramters."""
+
+        edges, f_exp = mergeBins(samples, scipy.stats.weibull_min, mle_a, mle_b)
+        f_obs, _ = np.histogram(a=samples, bins=edges)
+        chisq, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=len(f_obs)-3)
+
+        # if chisq < scipy.stats.chi2.isf(0.01, len(f_obs)-3):
+        #     print('yay')
+        # else:
+        #     print('NAY')
+
+        return chisq
