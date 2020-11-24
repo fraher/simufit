@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 from simufit.Dataset import Dataset
 from simufit.Helpers import mergeBins
 from scipy.optimize import minimize
@@ -13,7 +12,6 @@ matplotlib.use('Qt5Agg')
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
-import matplotlib.colors as mcolors
 
 from PyQt5 import QtWidgets, QtGui, QtCore
 from PyQt5.QtWidgets import QWidget, QApplication, QMainWindow, QAction, QFileDialog
@@ -344,7 +342,7 @@ class Display():
     def histogram(self, samples, bins=None, comparison_distribution=None):
         """Displays the histogram of a given collection of samples, optionally a separate distribution can
         be passed to show a comparison"""
-        if comparison_distribution.getSamples() is not None:
+        if comparison_distribution is not None:
             if len(samples) != len(comparison_distribution.getSamples()):
                 print("Distribution sample sizes do not match")
                 return
@@ -355,6 +353,7 @@ class Bernoulli(Display):
     def __init__(self):
         self.name = 'Bernoulli'
         self.measure_type = mt.DISCRETE
+        self._parameters = [{'label': 'p', 'probability':[0,1]}]
 
     def sample(self, p, size=None, seed=None):
         """Get samples from Bern(p). The size argument is the number of samples (default 1)."""
@@ -402,6 +401,7 @@ class Geometric(Display):
     def __init__(self):
         self.name = 'Geometric'
         self.measure_type = mt.DISCRETE
+        self._parameters = [{'label': 'p', 'probability':[0,1]}]
 
     def sample(self, p, size=None, seed=None):
         """Get samples from Geom(p). The size argument is the number of samples (default 1)."""
@@ -441,6 +441,7 @@ class Uniform(Display):
     def __init__(self):
         self.name = 'Uniform'
         self.measure_type = mt.CONTINUOUS
+        self._parameters = [{'label':'a', 'range':[0,100], 'position':'min'}, {'label':'b', 'range':[0,100], 'position':'max'}]
 
     def sample(self, a=0., b=1., size=None, seed=None):
         """Get samples from Unif(a, b). The size argument is the number of samples (default 1)."""
@@ -464,6 +465,7 @@ class Normal(Display):
     def __init__(self):
         self.name = 'Normal'
         self.measure_type = mt.CONTINUOUS
+        self._parameters = [{'label':'mean', 'span':[0,10]}, {'label':'var', 'span':[0,100]}]
 
     def sample(self, mean=0., var=1., size=None, seed=None):
         """Get samples from Norm(μ, σ^2). The size argument is the number of samples (default 1)."""
@@ -522,6 +524,7 @@ class Exponential(Display):
     def __init__(self):
         self.name = 'Exponential'
         self.measure_type = mt.CONTINUOUS
+        self._parameters = [{'label':'lambd','span':[0,10]}]
 
     def sample(self, lambd=1., size=None, seed=None):
         """Get samples from Exp(λ). The size argument is the number of samples (default 1)."""
@@ -577,6 +580,7 @@ class Gamma(Display):
     def __init__(self):
         self.name = 'Gamma'
         self.measure_type = mt.CONTINUOUS
+        self._parameters = [{'label':'a', 'span':[0,100]}]
 
     def sample(self, a, b=1., size=None, seed=None):
         """Get samples from Gamma(a, b). The size argument is the number of samples (default 1)."""
@@ -617,6 +621,7 @@ class Weibull(Display):
     def __init__(self):
         self.name = 'Weibull'
         self.measure_type = mt.CONTINUOUS
+        self._parameters = [{'label':'a', 'span':[0,100]}]
 
     def sample(self, a, b=1, size=None, seed=None):
         """Get samples from Weibull(a, b). The shape parameter is a, the scale parameter is b (default 1).
@@ -652,3 +657,9 @@ class Weibull(Display):
         def nll(x, samples):
             return self.negLogL(*x, samples)
         return minimize(nll, x0, args=samples, method='Nelder-Mead')
+
+class Unknown(Display):
+
+    def __init__(self):
+        self.name = 'Unknown'
+        self.measure_type = None        

@@ -1,9 +1,11 @@
+from scipy.stats import distributions
 from simufit.IDistribution import IDistribution
 from simufit.Types import DistributionType as dt
 from simufit.Types import MeasureType as mt
 from simufit.Report import DistributionReport as dr
 import simufit.dist_generator as dg
 import random as rand
+import numpy as np
 
 class Distribution(IDistribution):
     """The Distribution class contains a stateful collection of parameters which
@@ -34,8 +36,9 @@ class Distribution(IDistribution):
         self._samples = list()        
         self._distribution_report = dr()     
         self._measureType = mt.UNKNOWN          
-        self._type = None
+        self._type = None        
         self.Distribution = dt.UNKNOWN        
+
 
     def readCsv(self, filename):
         """This method loads a collection of samples from a CSV file"""
@@ -96,9 +99,64 @@ class Distribution(IDistribution):
                 self._size = kwargs.get('size')
 
         if 'size' not in kwargs and self._size is not None:
-            kwargs['size'] = self._size
+            kwargs['size'] = self._size    
+        
+        if self.Distribution.name == 'Unknown':            
+            if self._size is None:
+                self._size = np.random.randint(1, 1000) # Generates up to 1000 samples
+                kwargs['size'] = self._size
+            
+            random_distribution = rand.choice([x for x in list(dt) if x != dt.UNKNOWN])
+            distribution = getattr(dg, str(random_distribution).replace('DistributionType.','').title())()
+        
+            # Generate values for required parameters
+            min_range = None            
 
-        self._samples = self.Distribution.sample(**kwargs) # Update the samples
+            for parameter in distribution._parameters:                
+                label = parameter['label']
+                value = None
+
+                if 'probability' in parameter:
+                    value = np.random.uniform(parameter['probability'][0], parameter['probability'][1])
+                    kwargs[label] = value
+
+                if 'mean' in parameter:
+                    value = np.random.randint(parameter['mean'][0], parameter['mean'][1])
+                    kwargs[label] = value
+
+                if 'variance' in parameter:
+                    value = np.random.randint(parameter['var'][0], parameter['var'][1])                                
+                    kwargs[label] = value
+                
+                if 'span' in parameter:                    
+                    value = np.random.randint(parameter['span'][0], parameter['span'][1])                                                    
+                    kwargs[label] = value                            
+                
+                if 'range' in parameter:
+                    if self.getRange() == [None, None]:
+                        if min_range is None:
+                            min_range = np.random.randint(parameter['span'][0], parameter['span'][1])
+                            value = min_range
+                            kwargs[label] = value
+                        elif min_range is not None:
+                            min_range = np.random.randint(min_range, parameter['span'][1])
+                            value = min_range
+                            kwargs[label] = value
+                    else:
+                        if min_range is None:
+                            min_range = self.getRange()[0]
+                            value = min_range
+                            kwargs[label] = value
+                        elif min_range is not None:
+                            value = self.getRange()[1]                            
+                            kwargs[label] = value            
+            
+            self._samples = distribution.sample(**kwargs) # Update the samples
+        else:
+            
+            self._samples = self.Distribution.sample(**kwargs) # Update the samples
+
+        
         self._range = [min(self._samples), max(self._samples)] # Update the range
 
     def setSamples(self, samples):        
@@ -134,15 +192,16 @@ class Distribution(IDistribution):
         if distribution_type == dt.BINOMIAL:            
             self.Distribution = None # TODO: Add dg.Binomial()
         
-        if distribution_type == dt.BERNOULLI:            
+        if distribution_type == dt.WEIBULL:            
             self.Distribution = dg.Weibull()
 
-        if distribution_type is None:            
+        if distribution_type is None or distribution_type == dt.UNKNOWN:            
             self._type = dt.UNKNOWN
-            self._measureType = mt.UNKNOWN
+            self._measureType = mt.UNKNOWN            
+            self.Distribution = dg.Unknown()
         elif distribution_type is not None:
             self._type = distribution_type
-            self._measureType = self.Distribution.measure_type
+            self._measureType = self.Distribution.measure_type        
                         
     def setRandomDistribution(self):
         """This method selects a random distribution of DistributionType 
