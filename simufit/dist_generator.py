@@ -253,7 +253,7 @@ class Fitter(QMainWindow):
         elif dist == 'Exponential':
             lambd = self.slider1.value() / 100
             x = np.linspace(scipy.stats.expon.ppf(0.001, scale=1/lambd), scipy.stats.expon.ppf(0.999, scale=1/lambd), 100)
-            f = expon.pdf(x, scale=1/lambd)
+            f = scipy.stats.expon.pdf(x, scale=1/lambd)
             self.slider1Value.setText(str(round(lambd, 3)))
         elif dist == 'Normal':
             mean = self.slider2.value() / 100
@@ -453,8 +453,7 @@ class Uniform(Display):
 
     def MLE(self, samples):
         """Calculate the maximum likelihood estimator (MLE) for a collection of
-        random uniformly distributed samples. Returns the MLE parameters a and b."""
-
+        random uniformly distributed samples. Returns the MLE parameters a and b."""        
         a = np.min(samples)
         b = np.max(samples)
 
@@ -480,8 +479,7 @@ class Normal(Display):
 
     def negLogL(self, mean, var, samples):
         """Calculate the negative log likelihood for a collection of random
-        normally distributed samples, and a specified mean and variance."""
-
+        normally distributed samples, and a specified mean and variance."""        
         if var < 0:
             raise ValueError('var must be non-negative.')
 
@@ -489,20 +487,22 @@ class Normal(Display):
 
         return (-(n / 2) * np.log(2 * np.pi * var) - (1 / (2 * var)) * np.sum((samples - mean) ** 2)) * -1
 
-    def MLE(self, samples, use_minimizer=False, x0=None):
+    def MLE(self, samples, use_minimizer=False, mean0=None, var0=None):
         """Calculate the maximum likelihood estimator (MLE) for a collection of
         random normally distributed samples. Returns the MLE mean and variance.
         If use_minimizer=True, provide a initial guess for the optimizer in
         form x0=(mean_guess, var_guess)."""
 
         if use_minimizer:
-            if x0 is None:
-                raise ValueError('Supply an initial guess x0=(mean, var) to the optimizer.')
-            if x0[1] < 0:
-                raise ValueError('var must be non-negative. Supply an initial guess x0=(mean, var) with a positive var.')
+            if mean0 is None:
+                raise ValueError('Supply an initial guess mean0 to the optimizer.')
+            if var0 is None:
+                raise ValueError('Supply an initial guess var0 to the optimizer.')
+            if var0 < 0:
+                raise ValueError('var0 must be non-negative. Supply an initial guess var0 with a positive var.')
             def nll(x, samples):
                 return self.negLogL(*x, samples)
-            return minimize(nll, x0, args=samples, method='Nelder-Mead')
+            return minimize(nll, (mean0, var0), args=samples, method='Nelder-Mead')
 
         else:
             mu = np.mean(samples)
@@ -601,20 +601,22 @@ class Gamma(Display):
 
         return ((a - 1) * np.sum(np.log(samples)) - n * scipy.special.gamma(a) - n * a * np.log(b) - (np.sum(samples) / b)) * -1
 
-    def MLE(self, samples, x0=None):
+    def MLE(self, samples, a0=None, b0=None):
         """Calculate the maximum likelihood estimator (MLE) for a collection of
         random gamma-distributed samples. Returns the MLE a and b.
         If use_minimizer=True, provide a initial guess for the optimizer in
-        form x0=(a, b)."""
+        form a0, b0."""
 
-        if x0 is None:
-            raise ValueError('Supply an initial guess x0=(a,b) to the optimizer.')
-        if not x0[0] > 0 or not x0[1] > 0:
-            raise ValueError('a and b must be greater than 0. Supply an initial guess x0=(a,b) with a > 0 and b > 0.')
+        if a0 is None:
+            raise ValueError('Supply an initial guess for a0 to the optimizer.')
+        if b0 is None:
+            raise ValueError('Supply an initial guess for b0 to the optimizer.')
+        if not a0 > 0 or not b0 > 0:
+            raise ValueError('a0 and b0 must be greater than 0. Supply an initial guess with a0 > 0 and b0 > 0.')
 
         def nll(x, samples):
             return self.negLogL(*x, samples)
-        return minimize(nll, x0, args=samples, method='Nelder-Mead')
+        return minimize(nll, (a0,b0), args=samples, method='Nelder-Mead')
 
 class Weibull(Display):
 
@@ -643,23 +645,25 @@ class Weibull(Display):
 
         return (n * np.log(b) - n * np.log(a) + (b - 1) * np.sum(np.log(samples / a)) - np.sum(np.power((samples / a), b))) * -1
 
-    def MLE(self, samples, x0=None):
+    def MLE(self, samples, a0=None, b0=None):
         """Calculate the maximum likelihood estimator (MLE) for a collection of
         random weibull-distributed samples. Returns the MLE a and b.
         If use_minimizer=True, provide a initial guess for the optimizer in
         form x0=(a, b)."""
 
-        if x0 is None:
-            raise ValueError('Supply an initial guess x0=(a,b) to the optimizer.')
-        if not x0[0] > 0 or not x0[1] > 0:
-            raise ValueError('a and b must be greater than 0. Supply an initial guess x0=(a,b) with a > 0 and b > 0.')
+        if a0 is None:
+            raise ValueError('Supply an initial guess for a0 to the optimizer.')
+        if b0 is None:
+            raise ValueError('Supply an initial guess for b0 to the optimizer.')
+        if not a0 > 0 or not b0 > 0:
+            raise ValueError('a and b must be greater than 0. Supply an initial guess with a0 > 0 and b0 > 0.')
 
         def nll(x, samples):
             return self.negLogL(*x, samples)
-        return minimize(nll, x0, args=samples, method='Nelder-Mead')
+        return minimize(nll, (a0, b0), args=samples, method='Nelder-Mead')
 
 class Unknown(Display):
 
     def __init__(self):
         self.name = 'Unknown'
-        self.measure_type = None        
+        self.measure_type = mt.UNKNOWN        

@@ -1,3 +1,4 @@
+from matplotlib import use
 from scipy.stats import distributions
 from simufit.IDistribution import IDistribution
 from simufit.Types import DistributionType as dt
@@ -6,6 +7,7 @@ from simufit.Report import DistributionReport as dr
 import simufit.dist_generator as dg
 import random as rand
 import numpy as np
+import inspect
 
 class Distribution(IDistribution):
     """The Distribution class contains a stateful collection of parameters which
@@ -18,7 +20,7 @@ class Distribution(IDistribution):
         self._range = [None, None]
         self._size = None
         self._samples = list()        
-        self._distribution_report = dr()     
+        self._distribution_report = list()   
         self._measureType = mt.UNKNOWN        
         self._type = None
         self.Distribution = dt.UNKNOWN
@@ -56,7 +58,11 @@ class Distribution(IDistribution):
 
     def printReport(self):
         """This method displays the distribution fitting report"""
-        dr.printReport()
+        for report in self._distribution_report:       
+            print('-------------\n')     
+            report.printReport()
+        
+        print('-------------\n')     
 
     # Distribution Parameters    
     def setSeed(self, seed):
@@ -135,11 +141,11 @@ class Distribution(IDistribution):
                 if 'range' in parameter:
                     if self.getRange() == [None, None]:
                         if min_range is None:
-                            min_range = np.random.randint(parameter['span'][0], parameter['span'][1])
+                            min_range = np.random.randint(parameter['range'][0], parameter['range'][1])
                             value = min_range
                             kwargs[label] = value
                         elif min_range is not None:
-                            min_range = np.random.randint(min_range, parameter['span'][1])
+                            min_range = np.random.randint(min_range, parameter['range'][1])
                             value = min_range
                             kwargs[label] = value
                     else:
@@ -211,8 +217,7 @@ class Distribution(IDistribution):
     # Statistical Methods    
     def getMedian(self):
         """This method returns the median value of the sample set"""
-        # TODO: Write Method
-        raise NotImplementedError
+        
 
     def getExpectedValue(self):
         """This method returns the expected value of the sample set"""
@@ -322,14 +327,65 @@ class Distribution(IDistribution):
     
         print(result) # Placeholder until set to report
 
-    def identifyDistribution(self, x0=None):
+    def identifyDistribution(self, use_minimizer=None, x0=None, a0=None, b0=None, mean0=None, var0=None):
         """Executes logic to identify the most likely distribution"""
-        temp = self
-
+        temp = self        
+        kwargs = {}
+                
+        # Perform MLE for all distribution types based on available and provided parameters
         for distribution_type in dt:
-            if distribution_type != dt.UNKNOWN:
+            kwargs.clear()
+
+            if distribution_type not in [dt.UNKNOWN, dt.BINOMIAL]:                
                 temp.setDistribution(distribution_type)
-                try:
-                    self._distribution_report.topDistributions.append(temp.MLE())
-                except:
-                    self._distribution_report.topDistributions.append(temp.MLE(use_minimizer=False,x0=x0))
+                method_args = inspect.getargspec(temp.Distribution.MLE).args                                
+                valid = True                
+
+                if 'use_minimizer' in method_args:                                        
+                    if use_minimizer is not None:                                            
+                        kwargs['use_minimizer'] = use_minimizer
+
+                        if 'x0' in method_args :
+                            if x0 is None:                                
+                                valid = False                    
+                            else:                            
+                                kwargs['x0'] = x0
+
+                        if 'mean0' in method_args:
+                            if mean0 is None:                                
+                                valid = False                    
+                            else:                            
+                                kwargs['mean0'] = mean0
+
+                        if 'var0' in method_args:
+                            if var0 is None:                                
+                                valid = False                    
+                            else:                            
+                                kwargs['var0'] = var0
+
+                if 'a0' in method_args:
+                    if a0 is None:
+                        valid = False
+                    else:
+                        kwargs['a0'] = a0
+
+                if 'b0' in method_args:
+                    if b0 is None:
+                        valid = False
+                    else:
+                        kwargs['b0'] = b0
+
+                report = dr()
+                report.setDistributionType(temp.Distribution.name)
+
+                if valid:         
+                    result = temp.MLE(**kwargs)      
+                    import pdb;pdb.set_trace()                                                                                     
+                    report.setMLE(result)
+                    report.setGOF(None)                    
+                else:
+                    report.setMLE('Not Performed')
+                    report.setGOF('Not Performed')
+
+                self._distribution_report.append(report)
+                
