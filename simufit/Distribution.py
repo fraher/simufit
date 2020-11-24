@@ -309,6 +309,10 @@ class Distribution(IDistribution):
     def MLE(self, **kwargs):
         """Run the MLE method for the loaded distribution"""
         
+        if self._type == dt.UNKNOWN:
+            print("Must identify distribution type before performing MLE.")
+            return
+
         result = []
         
         if len(kwargs) > 0:
@@ -318,8 +322,14 @@ class Distribution(IDistribution):
     
         print(result) # Placeholder until set to report
 
-    def identifyDistribution(self):
+    def identifyDistribution(self, x0=None):
         """Executes logic to identify the most likely distribution"""
-        # TODO: Write Method
-        raise NotImplementedError
+        temp = self
 
+        for distribution_type in dt:
+            if distribution_type != dt.UNKNOWN:
+                temp.setDistribution(distribution_type)
+                try:
+                    self._distribution_report.topDistributions.append(temp.MLE())
+                except:
+                    self._distribution_report.topDistributions.append(temp.MLE(use_minimizer=False,x0=x0))
