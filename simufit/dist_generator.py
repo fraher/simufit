@@ -302,7 +302,7 @@ class Fitter(QMainWindow):
             self.slider2Value.setText(str(round(mean, 3)))
             self.slider3Value.setText(str(round(var, 3)))
             x = np.linspace(scipy.stats.norm.ppf(0.001, loc=mean, scale=std), scipy.stats.norm.ppf(0.999, loc=mean, scale=std), 100)
-            f = norm.pdf(x, loc=mean, scale=std)
+            f = scipy.stats.norm.pdf(x, loc=mean, scale=std)
         elif dist == 'Gamma':
             a = self.slider2.value() / 100
             b = self.slider3.value() / 100
@@ -434,19 +434,19 @@ class Bernoulli(Display):
 
         return (m * np.log(p) + (n - m) * np.log(1 - p)) * -1
 
-    def MLE(self, samples, use_minimizer=False, x0=None):
+    def MLE(self, samples, use_minimizer=False, p0=None):
         """Returns the maximum likelihood estimate of parameter p, given a collection of samples.
-        If use_minimizer=True, an initial guess x0 for p must be provided. Otherwise, the closed
+        If use_minimizer=True, an initial guess p0 for p must be provided. Otherwise, the closed
         form expression for the MLE of p is used."""
 
         if use_minimizer:
-            if x0 is None:
-                raise ValueError('Supply an initial guess x0=p to the optimizer.')
-            if x0 <= 0 or x0 >= 1:
+            if p0 is None:
+                raise ValueError('Supply an initial guess p0=p to the optimizer.')
+            if p0 <= 0 or p0 >= 1:
                 raise ValueError('p must be in the range (0, 1). Supply an initial guess in this range.')
-            res = minimize(self.negLogL, x0, args=samples, method='Nelder-Mead')
+            res = minimize(self.negLogL, p0, args=samples, method='Nelder-Mead')
             if res.status == 1:
-                print(f'Warning: Optimizer failed to converge with initial guess {x0}. Returned None for MLE values. Try another initial guess.')
+                print(f'Warning: Optimizer failed to converge with initial guess {p0}. Returned None for MLE values. Try another initial guess.')
                 return None
             else:
                 return res.x
@@ -459,6 +459,7 @@ class Binomial(Display):
     def __init__(self):
         self.name = 'Binomial'
         self.measure_type = mt.DISCRETE
+        self._parameters = [{'label': 'n', 'range':[0,100]}, {'label': 'p', 'probability':[0,1]}]
 
     def sample(self, n, p, size=None, seed=None):
         """Get samples from Bin(n, p). The size argument is the number of samples (default 1)."""
@@ -477,19 +478,19 @@ class Binomial(Display):
 
         return (np.sum(scipy.special.comb(n, samples)) + np.sum(samples) * np.log(p) + (n * len(samples) - np.sum(samples)) * np.log(1 - p)) * -1
 
-    def MLE(self, n, samples, use_minimizer=False, x0=None):
+    def MLE(self, n, samples, use_minimizer=False, p0=None):
         """Returns the maximum likelihood estimate of parameter p, given a collection of samples.
         The Binomial parameter n must be known or estimated to use this function."""
 
         if use_minimizer:
-            if x0 is None:
-                raise ValueError('Supply an initial guess x0=p to the optimizer.')
-            if x0 <= 0 or x0 >= 1:
+            if p0 is None:
+                raise ValueError('Supply an initial guess p0=p to the optimizer.')
+            if p0 <= 0 or p0 >= 1:
                 raise ValueError('p must be in the range (0, 1).')
 
-            res = minimize(self.negLogL, x0, args=(n, samples), method='Nelder-Mead')
+            res = minimize(self.negLogL, p0, args=(n, samples), method='Nelder-Mead')
             if res.status == 1:
-                print(f'Warning: Optimizer failed to converge with initial guess {x0}. Returned None for MLE values. Try another initial guess.')
+                print(f'Warning: Optimizer failed to converge with initial guess {p0}. Returned None for MLE values. Try another initial guess.')
                 return None
             else:
                 return res.x
@@ -535,19 +536,19 @@ class Geometric(Display):
 
         return (n * np.log(p) + np.sum(samples - 1) * np.log(1 - p)) * -1
 
-    def MLE(self, samples, use_minimizer=False, x0=None):
+    def MLE(self, samples, use_minimizer=False, p0=None):
         """Returns the maximum likelihood estimate of parameter p, given a collection of samples.
-        If use_minimizer=True, an initial guess x0 for p must be provided. Otherwise, the closed
+        If use_minimizer=True, an initial guess p0 for p must be provided. Otherwise, the closed
         form expression for the MLE of p is used."""
 
         if use_minimizer:
-            if x0 is None:
-                raise ValueError('Supply an initial guess x0=p to the optimizer.')
-            if x0 <= 0 or x0 >= 1:
+            if p0 is None:
+                raise ValueError('Supply an initial guess p0=p to the optimizer.')
+            if p0 <= 0 or p0 >= 1:
                 raise ValueError('p must be in the range (0, 1). Supply an initial guess in this range.')
-            res = minimize(self.negLogL, x0, args=samples, method='Nelder-Mead')
+            res = minimize(self.negLogL, p0, args=samples, method='Nelder-Mead')
             if res.status == 1:
-                print(f'Warning: Optimizer failed to converge with initial guess {x0}. Returned None for MLE values. Try another initial guess.')
+                print(f'Warning: Optimizer failed to converge with initial guess {p0}. Returned None for MLE values. Try another initial guess.')
                 return None
             else:
                 return res.x
@@ -624,7 +625,7 @@ class Normal(Display):
         """Calculate the maximum likelihood estimator (MLE) for a collection of
         random normally distributed samples. Returns the MLE mean and variance.
         If use_minimizer=True, provide a initial guess for the optimizer in
-        form x0=(mean_guess, var_guess)."""
+        form mean0, var0."""
 
         if use_minimizer:
             if mean0 is None:
@@ -635,9 +636,9 @@ class Normal(Display):
                 raise ValueError('var0 must be non-negative. Supply an initial guess var0 with a positive var.')
             def nll(x, samples):
                 return self.negLogL(*x, samples)
-            res = minimize(nll, x0, args=samples, method='Nelder-Mead')
+            res = minimize(nll, (mean0, var0), args=samples, method='Nelder-Mead')
             if res.status == 1:
-                print(f'Warning: Optimizer failed to converge with initial guess {x0}. Returned None for MLE values. Try another initial guess.')
+                print(f'Warning: Optimizer failed to converge with initial guess {mean0}, {var0}. Returned None for MLE values. Try another initial guess.')
                 return None, None
             else:
                 return res.x
@@ -662,7 +663,7 @@ class Exponential(Display):
     def __init__(self):
         self.name = 'Exponential'
         self.measure_type = mt.CONTINUOUS
-        self._parameters = [{'label':'lambd','span':[0,10]}]
+        self._parameters = [{'label':'lambd','span':[1,10]}]
 
     def sample(self, lambd=1., size=None, seed=None):
         """Get samples from Exp(λ). The size argument is the number of samples (default 1)."""
@@ -686,20 +687,20 @@ class Exponential(Display):
 
         return (n * np.log(lambd) - lambd * np.sum(samples)) * -1
 
-    def MLE(self, samples, use_minimizer=False, x0=None):
+    def MLE(self, samples, use_minimizer=False, lambd0=None):
         """Calculate the maximum likelihood estimator (MLE) for a collection of
         random normally distributed samples. Returns the MLE λ (lambd).
         If use_minimizer=True, provide a initial guess for the optimizer in
-        form x0=lambd."""
+        form lambd0=lambd."""
 
         if use_minimizer:
-            if x0 is None:
-                raise ValueError('Supply an initial guess x0=lambd to the optimizer.')
-            if x0 < 0:
-                raise ValueError('lambd must be non-negative. Supply an positive initial guess x0=lambd.')
-            res = minimize(self.negLogL, x0, args=samples)
+            if lambd0 is None:
+                raise ValueError('Supply an initial guess lambd0=lambd to the optimizer.')
+            if lambd0 < 0:
+                raise ValueError('lambd must be non-negative. Supply an positive initial guess lambd0=lambd.')
+            res = minimize(self.negLogL, lambd0, args=samples)
             if res.status == 1:
-                print(f'Warning: Optimizer failed to converge with initial guess {x0}. Returned None for MLE values. Try another initial guess.')
+                print(f'Warning: Optimizer failed to converge with initial guess {lambd0}. Returned None for MLE values. Try another initial guess.')
                 return None
             else:
                 return res.x
@@ -744,10 +745,10 @@ class Gamma(Display):
 
         return ((a - 1) * np.sum(np.log(samples)) - n * scipy.special.gamma(a) - n * a * np.log(b) - (np.sum(samples) / b)) * -1
 
-    def MLE(self, samples, x0):
+    def MLE(self, samples, a0, b0):
         """Calculate the maximum likelihood estimator (MLE) for a collection of
         random gamma-distributed samples. Returns the MLE a and b. Provide an
-        initial guess for the optimizer in form x0=(a, b)."""
+        initial guess for the optimizer in form a0, b0."""
 
         if a0 is None:
             raise ValueError('Supply an initial guess for a0 to the optimizer.')
@@ -759,9 +760,9 @@ class Gamma(Display):
         def nll(x, samples):
             return self.negLogL(*x, samples)
 
-        res = minimize(nll, x0, args=samples, method='Nelder-Mead')
+        res = minimize(nll, (a0, b0), args=samples, method='Nelder-Mead')
         if res.status == 1:
-            print(f'Warning: Optimizer failed to converge with initial guess {x0}. Returned None for MLE values. Try another initial guess.')
+            print(f'Warning: Optimizer failed to converge with initial guess {a0}, {b0}. Returned None for MLE values. Try another initial guess.')
             return None, None
         else:
             return res.x
@@ -802,10 +803,10 @@ class Weibull(Display):
 
         return (n * np.log(a) - n * np.log(b) + (a - 1) * np.sum(np.log(samples / b)) - np.sum(np.power((samples / b), a))) * -1
 
-    def MLE(self, samples, x0):
+    def MLE(self, samples, a0, b0):
         """Calculate the maximum likelihood estimator (MLE) for a collection of
         random weibull-distributed samples. Returns the MLE a and b. Provide an
-        initial guess for the optimizer in form x0=(a, b)."""
+        initial guess for the optimizer in form a0, b0."""
 
         if a0 is None:
             raise ValueError('Supply an initial guess for a0 to the optimizer.')
@@ -817,9 +818,9 @@ class Weibull(Display):
         def nll(x, samples):
             return self.negLogL(*x, samples)
 
-        res = minimize(nll, x0, args=samples, method='Nelder-Mead')
+        res = minimize(nll, (a0, b0), args=samples, method='Nelder-Mead')
         if res.status == 1:
-            print(f'Warning: Optimizer failed to converge with initial guess {x0}. Returned None for MLE values. Try another initial guess.')
+            print(f'Warning: Optimizer failed to converge with initial guess {a0}, {b0}. Returned None for MLE values. Try another initial guess.')
             return None, None
         else:
             return res.x
@@ -837,3 +838,9 @@ class Weibull(Display):
         #     print('NAY')
 
         return chisq
+
+class Unknown(Display):
+
+    def __init__(self):
+        self.name = 'Unknown'
+        self.measure_type = mt.UNKNOWN

@@ -8,6 +8,7 @@ import simufit.dist_generator as dg
 import random as rand
 import numpy as np
 import inspect
+import copy
 
 class Distribution(IDistribution):
     """The Distribution class contains a stateful collection of parameters which
@@ -196,7 +197,7 @@ class Distribution(IDistribution):
             self.Distribution = dg.Bernoulli()
             
         if distribution_type == dt.BINOMIAL:            
-            self.Distribution = None # TODO: Add dg.Binomial()
+            self.Distribution = dg.Binomial()
         
         if distribution_type == dt.WEIBULL:            
             self.Distribution = dg.Weibull()
@@ -217,7 +218,7 @@ class Distribution(IDistribution):
     # Statistical Methods
     def getMedian(self):
         """This method returns the median value of the sample set"""
-        
+        raise NotImplementedError
 
     def getExpectedValue(self):
         """This method returns the expected value of the sample set"""
@@ -327,16 +328,17 @@ class Distribution(IDistribution):
 
         print(result) # Placeholder until set to report
 
-    def identifyDistribution(self, use_minimizer=None, x0=None, a0=None, b0=None, mean0=None, var0=None):
+    def identifyDistribution(self, use_minimizer=None, a0=None, b0=None, mean0=None, var0=None, p0=None, lambd0=None, n=None):
         """Executes logic to identify the most likely distribution"""
-        temp = self        
+        self._distribution_report = list()
+        temp = copy.deepcopy(self)
         kwargs = {}
                 
         # Perform MLE for all distribution types based on available and provided parameters
         for distribution_type in dt:
             kwargs.clear()
 
-            if distribution_type not in [dt.UNKNOWN, dt.BINOMIAL]:                
+            if distribution_type not in [dt.UNKNOWN]:                
                 temp.setDistribution(distribution_type)
                 method_args = inspect.getargspec(temp.Distribution.MLE).args                                
                 valid = True                
@@ -345,11 +347,17 @@ class Distribution(IDistribution):
                     if use_minimizer is not None:                                            
                         kwargs['use_minimizer'] = use_minimizer
 
-                        if 'x0' in method_args :
-                            if x0 is None:                                
+                        if 'p0' in method_args :
+                            if p0 is None:                                
                                 valid = False                    
                             else:                            
-                                kwargs['x0'] = x0
+                                kwargs['p0'] = p0
+
+                        if 'lambd0' in method_args :
+                            if lambd0 is None:                                
+                                valid = False                    
+                            else:                            
+                                kwargs['lambd0'] = lambd0
 
                         if 'mean0' in method_args:
                             if mean0 is None:                                
@@ -374,18 +382,26 @@ class Distribution(IDistribution):
                         valid = False
                     else:
                         kwargs['b0'] = b0
+                
+                if temp.Distribution.name == "Binomial":
+                    if n is None:
+                        valid = False
+                    else:                        
+                        kwargs['n'] = n
 
                 report = dr()
                 report.setDistributionType(temp.Distribution.name)
-
-                if valid:         
-                    result = temp.MLE(**kwargs)      
-                    import pdb;pdb.set_trace()                                                                                     
+                print('Evaluating {}...'.format(temp.Distribution.name))
+                print('-----------------------------------------------')
+                if valid:                             
+                    result = temp.Distribution.MLE(samples=temp._samples, **kwargs)                                          
                     report.setMLE(result)
                     report.setGOF(None)                    
                 else:
                     report.setMLE('Not Performed')
                     report.setGOF('Not Performed')
+                print('-----------------------------------------------')
+                print('\n\n')
 
                 self._distribution_report.append(report)
                 

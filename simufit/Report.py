@@ -5,8 +5,7 @@ class DistributionReport():
     def __init__(self):
         self._distribution_type = None
         self._mle = None
-        self._gof = None
-        pass
+        self._gof = None        
 
     def setDistributionType(self, distribution_type):
         self._distribution_type = distribution_type
@@ -21,8 +20,8 @@ class DistributionReport():
         """Displays all Distribution Report Items collected 
         during the Simufit analysis."""
         print('Distribution Type: ', self._distribution_type)
-        print('MLE: ', self._mle)
-        print('Goodness of Fit: ', self._gof)
+        print('MLE: ', str(self._mle))
+        print('Goodness of Fit: ', str(self._gof))        
         
 
     
