@@ -14,7 +14,7 @@ class IDistribution(ABC):
         pass
 
     @abstractmethod
-    def readCsv(self, filename):
+    def readCsv(self, filepath, skip_header=True, delimiter=','):
         pass
 
     @abstractmethod
