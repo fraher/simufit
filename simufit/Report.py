@@ -3,15 +3,25 @@ class DistributionReport():
     dataset evaluated."""
 
     def __init__(self):
-        self.topDistributions = list()
-        pass
+        self._distribution_type = None
+        self._mle = None
+        self._gof = None        
+
+    def setDistributionType(self, distribution_type):
+        self._distribution_type = distribution_type
+    
+    def setMLE(self, mle):
+        self._mle = mle
+
+    def setGOF(self, gof):
+        self._gof = gof
 
     def printReport(self):
-        """Displays the top 3 Distribution Report Items collected 
+        """Displays all Distribution Report Items collected 
         during the Simufit analysis."""
-
-        # TODO: Restrict to 3 report items based on highest MLE
-        for distribution in self.topDistributions: 
-            print(distribution)
+        print('Distribution Type: ', self._distribution_type)
+        print('MLE: ', str(self._mle))
+        print('Goodness of Fit: ', str(self._gof))        
+        
 
     
