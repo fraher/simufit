@@ -391,13 +391,25 @@ class Distribution(IDistribution):
 
                 report = dr()
                 report.setDistributionType(temp.Distribution.name)
-                print('Evaluating {}...'.format(temp.Distribution.name))
+                print('Evaluating {}'.format(temp.Distribution.name))
                 print('-----------------------------------------------')
-                if valid:                             
+                if valid:                  
+                    print('Starting...')
                     result = temp.Distribution.MLE(samples=temp._samples, **kwargs)                                          
-                    report.setMLE(result)
-                    report.setGOF(None)                    
+                    try:
+                        report.setMLE(result)
+                    except Exception as e:
+                        report.setMLE('Error: {}'.format(e))
+                        print('Error: {}'.format(e))
+
+                    try:
+                        report.setGOF(None)
+                    except Exception as e:
+                        report.setGOF('Error: {}'.format(e))
+                     
+                    print('Completed')                   
                 else:
+                    print('Distribution Skipped')
                     report.setMLE('Not Performed')
                     report.setGOF('Not Performed')
                 print('-----------------------------------------------')

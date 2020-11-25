@@ -69,6 +69,147 @@ x.fit()
 x.Distribution.MLE(x._samples, use_minimizer=True, x0=0.42)
 ```
 
+### Identify Unknown Distribution
+To run multiple tests (i.e. MLE, GOF, etc..) to identify the distribution, use identifyDistribution with the required parameters for the MLE of a given distribution type each one will be executed. If a parameter is missing, that distribution will be skipped. 
+
+The output will indicate the success of the evalaution steps or any issues encountered for each distribution.
+```
+x.identifyDistribution()
+
+x.identifyDistribution(a0=9,b0=27, use_minimizer=True,p0=0.5,mean0=17.5,var0=4,n=1)
+
+Evaluating Geometric
+-----------------------------------------------
+Starting...
+...\simufit\dist_generator.py:537: RuntimeWarning: invalid value encountered in log
+  return (n * np.log(p) + np.sum(samples - 1) * np.log(1 - p)) * -1
+Completed
+-----------------------------------------------
+
+
+
+Evaluating Uniform
+-----------------------------------------------
+Starting...
+Completed
+-----------------------------------------------
+
+
+
+Evaluating Normal
+-----------------------------------------------
+Starting...
+Completed
+-----------------------------------------------
+
+
+
+Evaluating Exponential
+-----------------------------------------------
+Distribution Skipped
+-----------------------------------------------
+
+
+
+Evaluating Gamma
+-----------------------------------------------
+Starting...
+...\simufit\dist_generator.py:746: RuntimeWarning: invalid value encountered in log
+  return ((a - 1) * np.sum(np.log(samples)) - n * scipy.special.gamma(a) - n * a * np.log(b) - (np.sum(samples) / b)) * -1
+Warning: Optimizer failed to converge with initial guess 9, 27. Returned None for MLE values. Try another initial guess.
+Completed
+-----------------------------------------------
+
+
+
+Evaluating Bernoulli
+-----------------------------------------------
+Starting...
+...\simufit\dist_generator.py:435: RuntimeWarning: invalid value encountered in log
+  return (m * np.log(p) + (n - m) * np.log(1 - p)) * -1
+...\simufit\dist_generator.py:435: RuntimeWarning: divide by zero encountered in log
+  return (m * np.log(p) + (n - m) * np.log(1 - p)) * -1
+Warning: Optimizer failed to converge with initial guess 0.5. Returned None for MLE values. Try another initial guess.
+Completed
+-----------------------------------------------
+
+
+
+Evaluating Binomial
+-----------------------------------------------
+Starting...
+...\simufit\dist_generator.py:479: RuntimeWarning: invalid value encountered in log
+  return (np.sum(scipy.special.comb(n, samples)) + np.sum(samples) * np.log(p) + (n * len(samples) - np.sum(samples)) * np.log(1 - p)) * -1
+...\simufit\dist_generator.py:479: RuntimeWarning: divide by zero encountered in log
+  return (np.sum(scipy.special.comb(n, samples)) + np.sum(samples) * np.log(p) + (n * len(samples) - np.sum(samples)) * np.log(1 - p)) * -1
+Warning: Optimizer failed to converge with initial guess 0.5. Returned None for MLE values. Try another initial guess.
+Completed
+-----------------------------------------------
+
+
+
+Evaluating Weibull
+-----------------------------------------------
+Starting...
+...\simufit\dist_generator.py:804: RuntimeWarning: invalid value encountered in log
+  return (n * np.log(a) - n * np.log(b) + (a - 1) * np.sum(np.log(samples / b)) - np.sum(np.power((samples / b), a))) * -1
+...\simufit\dist_generator.py:804: RuntimeWarning: invalid value encountered in power
+  return (n * np.log(a) - n * np.log(b) + (a - 1) * np.sum(np.log(samples / b)) - np.sum(np.power((samples / b), a))) * -1
+Warning: Optimizer failed to converge with initial guess 9, 27. Returned None for MLE values. Try another initial guess.
+Completed
+-----------------------------------------------
+```
+### Displaying an Evaluation Report
+To display the values calculated by each of the identification of Distribution tests, use the printReport() method.
+
+```
+x.printReport()
+
+-------------
+
+Distribution Type:  Geometric
+MLE:  [0.11176758]
+Goodness of Fit:  None
+-------------
+
+Distribution Type:  Uniform
+MLE:  (-24.83433420862302, 36.50829018537624)
+Goodness of Fit:  None
+-------------
+
+Distribution Type:  Normal
+MLE:  [ 8.94883253 97.37910797]
+Goodness of Fit:  None
+-------------
+
+Distribution Type:  Exponential
+MLE:  Not Performed
+Goodness of Fit:  Not Performed
+-------------
+
+Distribution Type:  Gamma
+MLE:  (None, None)
+Goodness of Fit:  None
+-------------
+
+Distribution Type:  Bernoulli
+MLE:  None
+Goodness of Fit:  None
+-------------
+
+Distribution Type:  Binomial
+MLE:  None
+Goodness of Fit:  None
+-------------
+
+Distribution Type:  Weibull
+MLE:  (None, None)
+Goodness of Fit:  None
+-------------
+
+```
+
+
 ## Creating a Pip Package:
 ### Creating the whl
 ```
