@@ -11,11 +11,19 @@ def gammaMLE(samples):
     a_hat = (3 - s + np.sqrt((s - 3) ** 2 + 24 * s)) / (12 * s)
 
     diff = np.inf
+    i = 0
     while diff > 1e-8:
         a_new = a_hat - (np.log(a_hat) - digamma(a_hat) - s) / ((1 / a_hat) - polygamma(1, a_hat))
         diff = np.abs(a_new - a_hat)
         a_hat = a_new
+        i += 1
+        if i == 1000:
+            print('Failed to converge in 1000 iterations.')
+            break
     b_hat = (1 / (a_hat * n)) * np.sum(samples)
+
+    if i < 1000:
+        print(f'Converged in {i} iterations.')
 
     return np.array([a_hat, b_hat])
 
@@ -33,11 +41,19 @@ def weibullMLE(samples):
     a_hat = (((6 / (np.pi ** 2)) * (np.sum(np.log(samples) ** 2) - ((np.sum(np.log(samples))) ** 2) / n)) / (n - 1)) ** -0.5
 
     diff = np.inf
+    i = 0
     while diff > 1e-8:
         a_new = a_hat + (A + (1 / a_hat) - (C(a_hat) / B(a_hat))) / ((1 / (a_hat ** 2)) + (B(a_hat) * H(a_hat) - C(a_hat) ** 2) / (B(a_hat) ** 2))
         diff = np.abs(a_new - a_hat)
         a_hat = a_new
+        i += 1
+        if i == 1000:
+            print('Failed to converge in 1000 iterations.')
+            break
     b_hat = (np.sum(samples ** a_hat) / n) ** (1 / a_hat)
+
+    if i < 1000:
+        print(f'Converged in {i} iterations.')
 
     return np.array([a_hat, b_hat])
 

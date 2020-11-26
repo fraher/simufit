@@ -1,6 +1,6 @@
 import numpy as np
 from simufit.Dataset import Dataset
-from simufit.Helpers import mergeBins, gammaMLE
+from simufit.Helpers import mergeBins, gammaMLE, weibullMLE
 from scipy.optimize import minimize
 import scipy.stats
 import scipy.special
