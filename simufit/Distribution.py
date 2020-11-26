@@ -43,10 +43,14 @@ class Distribution(IDistribution):
         self.Distribution = dt.UNKNOWN        
 
 
-    def readCsv(self, filename):
-        """This method loads a collection of samples from a CSV file"""
-        # TODO: Write Method
-        raise NotImplementedError
+    def readCsv(self, filepath, skip_header=True, delimiter=','):
+        """This method loads a collection of samples from a CSV file"""                                    
+        self._samples = np.genfromtxt(fname=filepath, delimiter=delimiter, skip_header=skip_header)
+        self._range = [min(self._samples), max(self._samples)] # Update the range
+        self._size = len(self._samples)
+        self._type = dt.UNKNOWN
+        self.Distribution = dg.Unknown()
+
 
     def display(self):
         """This method prints the parameters specific to the Distribution object"""
@@ -258,7 +262,7 @@ class Distribution(IDistribution):
         alongside a different dataset for comparison if dataset is selected"""
         self.Distribution.histogram(self._samples, bins, comparison_distribution)
 
-    def drawSatterPlot(self):
+    def drawScatterPlot(self):
         """This method opens a graph and displays a scatter plot of the sample set"""
         # TODO: Write Method
         raise NotImplementedError
