@@ -1,6 +1,45 @@
 import numpy as np
 import scipy.stats
+from scipy.special import digamma, polygamma
 
+def gammaMLE(samples):
+    """Returns MLE parameters a_hat, b_hat for Gamma-distributed samples.
+    See https://en.wikipedia.org/wiki/Gamma_distribution#Maximum_likelihood_estimation."""
+
+    n = len(samples)
+    s = np.log((1 / n) * np.sum(samples)) - (1 / n) * np.sum(np.log(samples))
+    a_hat = (3 - s + np.sqrt((s - 3) ** 2 + 24 * s)) / (12 * s)
+
+    diff = np.inf
+    while diff > 1e-8:
+        a_new = a_hat - (np.log(a_hat) - digamma(a_hat) - s) / ((1 / a_hat) - polygamma(1, a_hat))
+        diff = np.abs(a_new - a_hat)
+        a_hat = a_new
+    b_hat = (1 / (a_hat * n)) * np.sum(samples)
+
+    return np.array([a_hat, b_hat])
+
+def weibullMLE(samples):
+    """Returns MLE parameters a_hat, b_hat for Weibull-distributed samples.
+    See Simulation & Modeling Chapter pp. 290-292 (Law 5e)."""
+
+    n = len(samples)
+
+    A = np.sum(np.log(samples)) / n
+    B = lambda x: np.sum(samples ** x)
+    C = lambda x: np.sum((samples ** x) * np.log(samples))
+    H = lambda x: np.sum((samples ** x) * (np.log(samples) ** 2))
+
+    a_hat = (((6 / (np.pi ** 2)) * (np.sum(np.log(samples) ** 2) - ((np.sum(np.log(samples))) ** 2) / n)) / (n - 1)) ** -0.5
+
+    diff = np.inf
+    while diff > 1e-8:
+        a_new = a_hat + (A + (1 / a_hat) - (C(a_hat) / B(a_hat))) / ((1 / (a_hat ** 2)) + (B(a_hat) * H(a_hat) - C(a_hat) ** 2) / (B(a_hat) ** 2))
+        diff = np.abs(a_new - a_hat)
+        a_hat = a_new
+    b_hat = (np.sum(samples ** a_hat) / n) ** (1 / a_hat)
+
+    return np.array([a_hat, b_hat])
 
 def getBadBins(num_samples, edges, bad_bin, merge_bin, func, *args):
     """Helper function for mergeBins. Returns the remaining bad bins

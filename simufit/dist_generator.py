@@ -1,6 +1,6 @@
 import numpy as np
 from simufit.Dataset import Dataset
-from simufit.Helpers import mergeBins
+from simufit.Helpers import mergeBins, gammaMLE
 from scipy.optimize import minimize
 import scipy.stats
 import scipy.special
@@ -587,7 +587,7 @@ class Uniform(Display):
 
     def MLE(self, samples):
         """Calculate the maximum likelihood estimator (MLE) for a collection of
-        random uniformly distributed samples. Returns the MLE parameters a and b."""        
+        random uniformly distributed samples. Returns the MLE parameters a and b."""
         a = np.min(samples)
         b = np.max(samples)
 
@@ -613,7 +613,7 @@ class Normal(Display):
 
     def negLogL(self, mean, var, samples):
         """Calculate the negative log likelihood for a collection of random
-        normally distributed samples, and a specified mean and variance."""        
+        normally distributed samples, and a specified mean and variance."""
         if var < 0:
             raise ValueError('var must be non-negative.')
 
@@ -745,27 +745,30 @@ class Gamma(Display):
 
         return ((a - 1) * np.sum(np.log(samples)) - n * scipy.special.gamma(a) - n * a * np.log(b) - (np.sum(samples) / b)) * -1
 
-    def MLE(self, samples, a0, b0):
+    def MLE(self, samples, use_minimizer=False, a0=None, b0=None):
         """Calculate the maximum likelihood estimator (MLE) for a collection of
         random gamma-distributed samples. Returns the MLE a and b. Provide an
         initial guess for the optimizer in form a0, b0."""
 
-        if a0 is None:
-            raise ValueError('Supply an initial guess for a0 to the optimizer.')
-        if b0 is None:
-            raise ValueError('Supply an initial guess for b0 to the optimizer.')
-        if not a0 > 0 or not b0 > 0:
-            raise ValueError('a0 and b0 must be greater than 0. Supply an initial guess with a0 > 0 and b0 > 0.')
+        if use_minimizer:
+            if a0 is None:
+                raise ValueError('Supply an initial guess for a0 to the optimizer.')
+            if b0 is None:
+                raise ValueError('Supply an initial guess for b0 to the optimizer.')
+            if not a0 > 0 or not b0 > 0:
+                raise ValueError('a0 and b0 must be greater than 0. Supply an initial guess with a0 > 0 and b0 > 0.')
 
-        def nll(x, samples):
-            return self.negLogL(*x, samples)
+            def nll(x, samples):
+                return self.negLogL(*x, samples)
 
-        res = minimize(nll, (a0, b0), args=samples, method='Nelder-Mead')
-        if res.status == 1:
-            print(f'Warning: Optimizer failed to converge with initial guess {a0}, {b0}. Returned None for MLE values. Try another initial guess.')
-            return None, None
+            res = minimize(nll, (a0, b0), args=samples, method='Nelder-Mead')
+            if res.status == 1:
+                print(f'Warning: Optimizer failed to converge with initial guess {a0}, {b0}. Returned None for MLE values. Try another initial guess.')
+                return None, None
+            else:
+                return res.x
         else:
-            return res.x
+            return gammaMLE(samples)
 
     def GOF(self, samples, mle_a, mle_b):
         """Return the chi-squared goodness of fit statistic and p-value for a set of MLE paramters."""
@@ -803,27 +806,30 @@ class Weibull(Display):
 
         return (n * np.log(a) - n * np.log(b) + (a - 1) * np.sum(np.log(samples / b)) - np.sum(np.power((samples / b), a))) * -1
 
-    def MLE(self, samples, a0, b0):
+    def MLE(self, samples, use_minimizer=False, a0=None, b0=None):
         """Calculate the maximum likelihood estimator (MLE) for a collection of
         random weibull-distributed samples. Returns the MLE a and b. Provide an
         initial guess for the optimizer in form a0, b0."""
 
-        if a0 is None:
-            raise ValueError('Supply an initial guess for a0 to the optimizer.')
-        if b0 is None:
-            raise ValueError('Supply an initial guess for b0 to the optimizer.')
-        if not a0 > 0 or not b0 > 0:
-            raise ValueError('a and b must be greater than 0. Supply an initial guess with a0 > 0 and b0 > 0.')
+        if use_minimizer:
+            if a0 is None:
+                raise ValueError('Supply an initial guess for a0 to the optimizer.')
+            if b0 is None:
+                raise ValueError('Supply an initial guess for b0 to the optimizer.')
+            if not a0 > 0 or not b0 > 0:
+                raise ValueError('a and b must be greater than 0. Supply an initial guess with a0 > 0 and b0 > 0.')
 
-        def nll(x, samples):
-            return self.negLogL(*x, samples)
+            def nll(x, samples):
+                return self.negLogL(*x, samples)
 
-        res = minimize(nll, (a0, b0), args=samples, method='Nelder-Mead')
-        if res.status == 1:
-            print(f'Warning: Optimizer failed to converge with initial guess {a0}, {b0}. Returned None for MLE values. Try another initial guess.')
-            return None, None
+            res = minimize(nll, (a0, b0), args=samples, method='Nelder-Mead')
+            if res.status == 1:
+                print(f'Warning: Optimizer failed to converge with initial guess {a0}, {b0}. Returned None for MLE values. Try another initial guess.')
+                return None, None
+            else:
+                return res.x
         else:
-            return res.x
+            return weibullMLE(samples)
 
     def GOF(self, samples, mle_a, mle_b):
         """Return the chi-squared goodness of fit statistic and p-value for a set of MLE paramters."""
