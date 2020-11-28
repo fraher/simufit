@@ -2,6 +2,7 @@ import numpy as np
 import scipy.stats
 from scipy.special import digamma, polygamma
 
+
 def gammaMLE(samples):
     """Returns MLE parameters a_hat, b_hat for Gamma-distributed samples.
     See https://en.wikipedia.org/wiki/Gamma_distribution#Maximum_likelihood_estimation."""
@@ -76,6 +77,8 @@ def getBadBins(num_samples, edges, bad_bin, merge_bin, func, *args):
         probs = func.cdf(k=edges, p=args[0])
     elif func == scipy.stats.binom:
         probs = func.cdf(k=edges, n=args[0], p=args[1])
+    elif func == scipy.stats.uniform:
+        probs = func.cdf(x=edges, loc=args[0], scale=args[1]-args[0])
 
     expected = np.diff(probs, n=1) * num_samples
 
@@ -106,6 +109,8 @@ def mergeBins(samples, func, *args):
             probs = func.cdf(x=edges, a=args[0], scale=args[1])
         elif func == scipy.stats.weibull_min:
             probs = func.cdf(x=edges, c=args[0], scale=args[1])
+        elif func == scipy.stats.uniform:
+            probs = func.cdf(x=edges, loc=args[0], scale=args[1]-args[0])
 
     expected = np.diff(probs, n=1) * n
 
