@@ -1,3 +1,4 @@
+from itertools import chain
 import numpy as np
 from simufit.Dataset import Dataset
 from simufit.Helpers import mergeBins, gammaMLE, weibullMLE
@@ -89,6 +90,10 @@ class Fitter(QMainWindow):
     def initUI(self):
         """Sets up all the UI functionality."""
 
+        # Set up status bar
+        self.statusBar()
+        self.statusBar().setStyleSheet("color: red; font-size: 14pt")
+
         ### Menu and Toolbars ###
         menubar = self.menuBar()
         fileMenu = menubar.addMenu('&File')
@@ -98,6 +103,7 @@ class Fitter(QMainWindow):
         actionImport.triggered.connect(self.importData)
         fileMenu.addAction(actionImport)
 
+        # MPL plot
         canvasHBox = QtWidgets.QHBoxLayout()
         canvasHBox.addItem(QtWidgets.QSpacerItem(25, 0, qsp.Fixed, qsp.Fixed))
         self.sc = MplCanvas(self, width=8, height=6, dpi=100)
@@ -107,11 +113,14 @@ class Fitter(QMainWindow):
 
         # Create toolbar, passing canvas as first parameter, parent (self, the MainWindow) as second.
         toolbar = NavigationToolbar(self.sc, self)
+        self.autoFitButton = QtWidgets.QPushButton('Auto Fit')
+        self.autoFitButton.pressed.connect(self.autoFit)
+        toolbar.addWidget(self.autoFitButton)
 
         # Create grid layout for selecting distribution
         self.distSelector = QtWidgets.QComboBox()
-        self.distSelector.setFixedSize(QtCore.QSize(100, 24))
-        if self.dist is None:
+        self.distSelector.setFixedSize(QtCore.QSize(150, 24))
+        if self.dist is None or self.dist.name == 'Unknown':
             dists = ['Bernoulli', 'Binomial', 'Geometric', 'Uniform', 'Normal', 'Exponential', 'Gamma', 'Weibull']
             for dist in dists:
                 self.distSelector.addItem(dist)
@@ -120,35 +129,34 @@ class Fitter(QMainWindow):
         self.distSelector.currentTextChanged.connect(self.changeDist)
 
         # Slider 1
-        self.slider1Label = QtWidgets.QLabel('p')
+        self.slider1Label = QtWidgets.QLabel('')
         self.slider1 = QtWidgets.QSlider(minimum=1, orientation=QtCore.Qt.Horizontal, maximum=999)
-        self.slider1Value = QtWidgets.QLabel('0.01')
+        self.slider1Value = QtWidgets.QLabel('')
         self.slider1.valueChanged[int].connect(self.plotData)
         self.slider1.setFixedWidth(700)
 
         # Slider 2
-        self.slider2Label = QtWidgets.QLabel('Mean')
+        self.slider2Label = QtWidgets.QLabel('')
         self.slider2 = QtWidgets.QSlider(minimum=-999, orientation=QtCore.Qt.Horizontal, maximum=999)
         self.slider2.setValue(0)
-        self.slider2Value = QtWidgets.QLabel('0')
+        self.slider2Value = QtWidgets.QLabel('')
         self.slider2.valueChanged[int].connect(self.plotData)
         self.slider2.setFixedWidth(700)
 
         # Slider 3
-        self.slider3Label = QtWidgets.QLabel('Variance')
+        self.slider3Label = QtWidgets.QLabel('')
         self.slider3 = QtWidgets.QSlider(minimum=1, orientation=QtCore.Qt.Horizontal, maximum=999)
-        self.slider3Value = QtWidgets.QLabel('0.01')
+        self.slider3Value = QtWidgets.QLabel('')
         self.slider3.valueChanged[int].connect(self.plotData)
         self.slider3.setFixedWidth(700)
 
-        # Slider 4
-        # TODO: Set number of bins here
-
+        # Distribution selector
         dist = QtWidgets.QGridLayout()
         dist.addWidget(QtWidgets.QLabel('Distribution:'), 0, 0)
         dist.addWidget(self.distSelector, 0, 1)
         dist.addItem(QtWidgets.QSpacerItem(0, 0, qsp.Expanding, qsp.Fixed), 0, 2)
 
+        # Group slider labels, display values, spacers, and sliders themselves into a single layout
         self.sliders1 = QtWidgets.QHBoxLayout()
         self.sliders1.addWidget(self.slider1Label)
         self.sliders1.addItem(QtWidgets.QSpacerItem(10, 0, qsp.Fixed, qsp.Fixed))
@@ -173,6 +181,7 @@ class Fitter(QMainWindow):
         self.sliders3.addWidget(self.slider3)
         self.sliders3.addItem(QtWidgets.QSpacerItem(0, 0, qsp.Expanding, qsp.Fixed))
 
+        # Create final layout
         layout = QtWidgets.QVBoxLayout()
         layout.addWidget(toolbar)
         layout.addLayout(dist)
@@ -188,79 +197,156 @@ class Fitter(QMainWindow):
         widget.setLayout(layout)
         self.setCentralWidget(widget)
 
+    def autoFit(self):
+        """Fit distribution to data using MLE. Display chi-square value."""
+
+        try:
+            if self.dist.name == 'Binomial':
+                mle_params = self.dist.MLE(self.samples, self.slider2.value())
+                self.slider1.setValue(int(mle_params * 1000))
+                self.slider1Value.setText(str(round(mle_params[0], 3)))
+                chisq0, chisq = self.dist.GOF(self.samples, self.slider2.value(), mle_params)
+            else:
+                mle_params = self.dist.MLE(self.samples)
+                if self.dist.name == 'Bernoulli' or self.dist.name == 'Geometric':
+                    self.slider1.setValue(int(mle_params * 1000))
+                    self.slider1Value.setText(str(round(mle_params[0], 3)))
+                elif self.dist.name == 'Uniform':
+                    self.slider1.setValue(int(np.floor(mle_params[0])))
+                    self.slider2.setValue(int(np.ceil(mle_params[1])))
+                    self.slider1Value.setText(str(int(np.floor(mle_params[0]))))
+                    self.slider2Value.setText(str(int(np.ceil(mle_params[1]))))
+                elif self.dist.name == 'Normal':
+                    self.slider2.setValue(int(mle_params[0] * 100))
+                    self.slider3.setValue(int(mle_params[1] * 100))
+                    self.slider2Value.setText(str(round(mle_params[0], 2)))
+                    self.slider3Value.setText(str(round(mle_params[1], 2)))
+                elif self.dist.name == 'Exponential':
+                    self.slider1.setValue(int(mle_params * 10))
+                    self.slider1Value.setText(str(round(mle_params[0], 1)))
+                elif self.dist.name == 'Gamma' or self.dist.name == 'Weibull':
+                    self.slider2.setValue(int(mle_params[0] * 10))
+                    self.slider3.setValue(int(mle_params[1] * 10))
+                    self.slider2Value.setText(str(round(mle_params[0], 3)))
+                    self.slider3Value.setText(str(round(mle_params[1], 3)))
+                chisq0, chisq = self.dist.GOF(self.samples, *mle_params)
+            if chisq0 < chisq:
+                self.statusBar().showMessage(f'Accept fit with χ0^2 = {round(chisq0, 3)} < χ^2 = {round(chisq, 3)}', 10000)
+            else:
+                self.statusBar().showMessage(f'Reject fit with χ0^2 = {round(chisq0, 3)} > χ^2 = {round(chisq, 3)}', 10000)
+        except Exception as e:
+            if self.dist.name == 'Bernoulli':
+                self.statusBar().showMessage('No goodness of fit test for Bernoulli.')
+            else:
+                self.statusBar().showMessage(f'Failed to find MLE parameters! Underlying distribution may be incorrect.', 10000)
+                print(e)
+
     def importData(self):
         """Import a data file (csv, txt) and view as histogram."""
 
         self.datasetWindow.show()
 
     def changeDist(self):
+        """Sets up the appropriate parameter sliders for a given distribution."""
 
-        if self.dist is not None:
-            dist = self.dist.name
-        else:
-            dist = self.distSelector.currentText()
+        # Checks whether samples generated from a particular known distribtion.
+        # This will be the case when fit method is called from a distribution class object.
+        dist = self.distSelector.currentText()
 
+        if dist == 'Bernoulli':
+            self.dist = Bernoulli()
+        elif dist == 'Binomial':
+            self.dist = Binomial()
+        elif dist == 'Geometric':
+            self.dist = Geometric()
+        elif dist == 'Uniform':
+            self.dist = Uniform()
+        elif dist == 'Normal':
+            self.dist = Normal()
+        elif dist == 'Exponential':
+            self.dist = Exponential()
+        elif dist == 'Gamma':
+            self.dist = Gamma()
+        elif dist == 'Weibull':
+            self.dist = Weibull()
+
+        # Group widgets associated with a particular slider, excluding QSpacerItems
         slider1Widgets = (self.sliders1.itemAt(i).widget() for i in range(self.sliders1.count()) if not isinstance(self.sliders1.itemAt(i), QtWidgets.QSpacerItem))
         slider2Widgets = (self.sliders2.itemAt(i).widget() for i in range(self.sliders2.count()) if not isinstance(self.sliders2.itemAt(i), QtWidgets.QSpacerItem))
         slider3Widgets = (self.sliders3.itemAt(i).widget() for i in range(self.sliders3.count()) if not isinstance(self.sliders3.itemAt(i), QtWidgets.QSpacerItem))
 
+        # Determine which widgets are visible/hidden and their labels/ranges
         if dist in ['Bernoulli', 'Geometric', 'Exponential']:
             for w in slider1Widgets:
                 w.show()
-            for w in slider2Widgets:
+            for w in chain(slider2Widgets, slider3Widgets):
                 w.hide()
-            for w in slider3Widgets:
-                w.hide()
+            self.slider1.setRange(1, 999)
             if dist in ['Bernoulli', 'Geometric']:
                 self.slider1Label.setText('p')
-            elif dist == 'Exponential':
+            else:
                 self.slider1Label.setText('λ')
 
-        elif dist == 'Binomial':
-            for w in slider1Widgets:
+        elif dist == 'Uniform':
+            for w in chain(slider1Widgets, slider2Widgets):
                 w.show()
-            for w in slider2Widgets:
+            for w in slider3Widgets:
+                w.hide()
+            self.slider1Label.setText('a')
+            self.slider2Label.setText('b')
+            self.slider1.setRange(-999, 999)
+            self.slider2.setRange(-999, 999)
+            self.slider1.setValue(0)
+            self.slider2.setValue(1)
+
+        elif dist == 'Binomial':
+            for w in chain(slider1Widgets, slider2Widgets):
                 w.show()
             for w in slider3Widgets:
                 w.hide()
             self.slider1Label.setText('p')
             self.slider2Label.setText('n')
-            self.slider2.setMinimum(0)
-            self.slider2.setMaximum(100)
+            self.slider1.setRange(1, 999)
+            self.slider2.setRange(0, 100)
 
         elif dist in ['Normal', 'Gamma', 'Weibull']:
             for w in slider1Widgets:
                 w.hide()
-            for w in slider2Widgets:
-                w.show()
-            for w in slider3Widgets:
+            for w in chain(slider2Widgets, slider3Widgets):
                 w.show()
             if dist == 'Normal':
-                self.slider2.setMinimum(-999)
-                self.slider3.setMinimum(-999)
                 self.slider2Label.setText('Mean')
                 self.slider3Label.setText('Variance')
-            elif dist == 'Gamma' or dist == 'Weibull':
-                self.slider2.setMinimum(1)
-                self.slider3.setMinimum(1)
+                self.slider2.setRange(-9999, 9999)
+                self.slider3.setRange(1, 9999)
+            else:
                 self.slider2Label.setText('a')
                 self.slider3Label.setText('b')
+                self.slider2.setRange(1, 999)
+                self.slider3.setRange(1, 999)
 
         QtCore.QTimer.singleShot(10, lambda: self.resize(self.minimumSize()))
 
     def plotData(self):
+        """Plots distibution PMF/PDF for a given set of parameters alongside sample data."""
 
-        dist = self.distSelector.currentText()
+        # Clear the previous plot
         self.sc.axes.clear()
 
+        # Get distribution type
+        dist = self.distSelector.currentText()
+
+        # Plot the sample data as vertical line plot (discrete data) or histogram (continuous data).
         if dist == 'Bernoulli':
+            n = len(self.samples)
             x, y = np.unique(self.samples, return_counts=True)
-            self.sc.axes.scatter(x, y, alpha=0.5, color='lightskyblue', ec='white', label='Data')
-            self.sc.axes.vlines(x, ymin=0, ymax=y)
+            self.sc.axes.scatter(x, y/n, alpha=0.5, color='lightskyblue', ec='white', label='Data')
+            self.sc.axes.vlines(x, ymin=0, ymax=y/n)
         elif dist in ['Binomial', 'Geometric']:
+            n = len(self.samples)
             x, y = np.unique(self.samples, return_counts=True)
-            self.sc.axes.scatter(x, y, alpha=0.5, color='lightskyblue', ec='white', label='Data')
-            self.sc.axes.vlines(x, ymin=0, ymax=y)
+            self.sc.axes.scatter(x, y/n, alpha=0.5, color='lightskyblue', ec='white', label='Data')
+            self.sc.axes.vlines(x, ymin=0, ymax=y/n)
             self.sc.axes.set_xticks(np.arange(1, np.max(self.samples)+1))
         else:
             self.sc.axes.hist(self.samples, bins=np.histogram_bin_edges(self.samples, 'fd'), density=True, color=(152/255, 200/255, 132/255), ec='white', label='Data')
@@ -268,61 +354,68 @@ class Fitter(QMainWindow):
         x = ""
         f = ""
 
+        # Plot the PMF/PDF of the fitted distribution
         if dist == 'Bernoulli':
-            n = len(self.samples)
             p = self.slider1.value() / 1000
-            self.slider1Value.setText(str(round(p, 3)))
             x = np.arange(2)
-            y = np.array([(1 - p) * n, p * n])
+            y = np.array([(1 - p), p])
             self.sc.axes.scatter(x, y, alpha=0.5, color='lemonchiffon', ec='white', label='Fit')
             self.sc.axes.vlines(x, ymin=[0, 0], ymax=y)
-        elif dist == 'Binomial':
-            m = len(self.samples)
-            p = self.slider1.value() / 1000
             self.slider1Value.setText(str(round(p, 3)))
+        elif dist == 'Binomial':
+            p = self.slider1.value() / 1000
             n = self.slider2.value()
-            self.slider2Value.setText(str(n))
             x = np.arange(np.max(self.samples)+1)
-            f = scipy.stats.binom.pmf(k=x, n=n, p=p) * m
+            f = scipy.stats.binom.pmf(k=x, n=n, p=p)
+            self.slider1Value.setText(str(round(p, 3)))
+            self.slider2Value.setText(str(n))
         elif dist == 'Geometric':
-            n = len(self.samples)
             x = np.arange(1, np.max(self.samples)+1)
             p = self.slider1.value() / 1000
-            f = n * (((1 - p) ** (x - 1)) * p)
+            f = (((1 - p) ** (x - 1)) * p)
             self.slider1Value.setText(str(round(p, 3)))
-        elif dist == 'Exponential':
-            lambd = self.slider1.value() / 100
-            x = np.linspace(scipy.stats.expon.ppf(0.001, scale=1/lambd), scipy.stats.expon.ppf(0.999, scale=1/lambd), 100)
-            f = scipy.stats.expon.pdf(x, scale=1/lambd)
-            self.slider1Value.setText(str(round(lambd, 3)))
+        elif dist == 'Uniform':
+            self.slider2.setValue(np.max([self.slider1.value(), self.slider2.value()]))  # Ensure that b never goes below a
+            a = self.slider1.value()
+            b = self.slider2.value()
+            x = np.linspace(scipy.stats.uniform.ppf(0.001, loc=a, scale=b-a), scipy.stats.uniform.ppf(0.999, loc=a, scale=b-a), 100)
+            f = scipy.stats.uniform.pdf(x, loc=a, scale=b-a)
+            self.slider1Value.setText(str(self.slider1.value()))
+            self.slider2Value.setText(str(self.slider2.value()))
         elif dist == 'Normal':
             mean = self.slider2.value() / 100
             var = self.slider3.value() / 100
             std = np.sqrt(var)
-            self.slider2Value.setText(str(round(mean, 3)))
-            self.slider3Value.setText(str(round(var, 3)))
             x = np.linspace(scipy.stats.norm.ppf(0.001, loc=mean, scale=std), scipy.stats.norm.ppf(0.999, loc=mean, scale=std), 100)
             f = scipy.stats.norm.pdf(x, loc=mean, scale=std)
+            self.slider2Value.setText(str(round(mean, 3)))
+            self.slider3Value.setText(str(round(var, 3)))
+        elif dist == 'Exponential':
+            lambd = self.slider1.value() / 10
+            x = np.linspace(scipy.stats.expon.ppf(0.001, scale=1/lambd), scipy.stats.expon.ppf(0.999, scale=1/lambd), 100)
+            f = scipy.stats.expon.pdf(x, scale=1/lambd)
+            self.slider1Value.setText(str(round(lambd, 3)))
         elif dist == 'Gamma':
-            a = self.slider2.value() / 100
-            b = self.slider3.value() / 100
-            self.slider2Value.setText(str(round(a, 3)))
-            self.slider3Value.setText(str(round(b, 3)))
+            a = self.slider2.value() / 10
+            b = self.slider3.value() / 10
             x = np.linspace(scipy.stats.gamma.ppf(0.001, a, scale=b), scipy.stats.gamma.ppf(0.999, a, scale=b), 100)
             f = scipy.stats.gamma.pdf(x, a, scale=b)
-        elif dist == 'Weibull':
-            a = self.slider2.value() / 100
-            b = self.slider3.value() / 100
             self.slider2Value.setText(str(round(a, 3)))
             self.slider3Value.setText(str(round(b, 3)))
+        elif dist == 'Weibull':
+            a = self.slider2.value() / 10
+            b = self.slider3.value() / 10
             x = np.linspace(scipy.stats.weibull_min.ppf(0.001, a, scale=b), scipy.stats.weibull_min.ppf(0.999, a, scale=b), 100)
             f = scipy.stats.weibull_min.pdf(x, a, scale=b)
+            self.slider2Value.setText(str(round(a, 3)))
+            self.slider3Value.setText(str(round(b, 3)))
 
-        self.sc.axes.plot(x, f, label='Fit')
+        if dist != 'Bernoulli':
+            self.sc.axes.plot(x, f, label='Fit')
         self.sc.axes.set_ylim(bottom=0)
-        self.sc.axes.set_ylabel('Frequency', fontsize=14)
-        self.sc.axes.set_xlabel('x', fontsize=14)
-        self.sc.axes.tick_params(axis='both', labelsize=14)
+        self.sc.axes.set_ylabel('Frequency', color='lightskyblue', fontsize=14, labelpad=14)
+        self.sc.axes.set_xlabel('x', color='lightskyblue', fontsize=14)
+        self.sc.axes.tick_params(axis='both', labelsize=14, labelcolor='lightskyblue', color='lightskyblue')
         self.sc.axes.legend()
         self.sc.fig.canvas.draw()
 
@@ -452,7 +545,7 @@ class Bernoulli(Display):
                 return res.x
 
         else:
-            return np.mean(samples)
+            return np.array([np.mean(samples)])
 
 class Binomial(Display):
 
@@ -478,7 +571,7 @@ class Binomial(Display):
 
         return (np.sum(scipy.special.comb(n, samples)) + np.sum(samples) * np.log(p) + (n * len(samples) - np.sum(samples)) * np.log(1 - p)) * -1
 
-    def MLE(self, n, samples, use_minimizer=False, p0=None):
+    def MLE(self, samples, n, use_minimizer=False, p0=None):
         """Returns the maximum likelihood estimate of parameter p, given a collection of samples.
         The Binomial parameter n must be known or estimated to use this function."""
 
@@ -495,7 +588,7 @@ class Binomial(Display):
             else:
                 return res.x
         else:
-            return np.mean(samples) / n
+            return np.array([np.mean(samples) / n])
 
     def GOF(self, samples, n, mle_p):
         """Returns the chi-squared goodness of fit statistic for a set of MLE paramters."""
@@ -504,12 +597,7 @@ class Binomial(Display):
         f_obs, _ = np.histogram(a=samples, bins=edges+1)
         chisq, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=len(f_obs)-2)
 
-        # if chisq < scipy.stats.chi2.isf(0.05, len(f_obs)-2):
-        #     print('yay')
-        # else:
-        #     print('NAY')
-
-        return chisq
+        return np.array([chisq, scipy.stats.chi2.isf(0.05, len(f_obs)-2)])
 
 class Geometric(Display):
 
@@ -554,7 +642,7 @@ class Geometric(Display):
                 return res.x
 
         else:
-            return 1 / np.mean(samples)
+            return np.array([1 / np.mean(samples)])
 
     def GOF(self, samples, mle_p):
         """Returns the chi-squared goodness of fit statistic for a set of MLE paramters."""
@@ -563,12 +651,7 @@ class Geometric(Display):
         f_obs, _ = np.histogram(a=samples, bins=edges+1)
         chisq, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=len(f_obs)-2)
 
-        if chisq < scipy.stats.chi2.isf(0.05, len(f_obs)-2):
-            print('yay')
-        else:
-            print('NAY')
-
-        return chisq
+        return np.array([chisq, scipy.stats.chi2.isf(0.05, len(f_obs)-2)])
 
 class Uniform(Display):
 
@@ -591,7 +674,16 @@ class Uniform(Display):
         a = np.min(samples)
         b = np.max(samples)
 
-        return a, b
+        return np.array([a, b])
+
+    def GOF(self, samples, mle_a, mle_b):
+        """Returns the chi-squared goodness of fit statistic for a set of MLE paramters."""
+
+        edges, f_exp = mergeBins(samples, scipy.stats.uniform, mle_a, mle_b)
+        f_obs, _ = np.histogram(a=samples, bins=edges)
+        chisq, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=len(f_obs)-3)
+
+        return np.array([chisq, scipy.stats.chi2.isf(0.05, len(f_obs)-3)])
 
 class Normal(Display):
 
@@ -645,9 +737,9 @@ class Normal(Display):
 
         else:
             mu = np.mean(samples)
-            var = np.std(samples) ** 2
+            var = np.var(samples)
 
-            return mu, var
+            return np.array([mu, var])
 
     def GOF(self, samples, mle_mu, mle_var):
         """Return the chi-squared goodness of fit statistic and p-value for a set of MLE paramters."""
@@ -656,7 +748,7 @@ class Normal(Display):
         f_obs, _ = np.histogram(a=samples, bins=edges)
         chisq, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=len(f_obs)-3)
 
-        return chisq
+        return np.array([chisq, scipy.stats.chi2.isf(0.05, len(f_obs)-3)])
 
 class Exponential(Display):
 
@@ -706,9 +798,8 @@ class Exponential(Display):
                 return res.x
 
         else:
-            n = len(samples)
-            lambd = n / np.sum(samples)
-            return lambd
+            lambd = 1 / np.mean(samples)
+            return np.array([lambd])
 
     def GOF(self, samples, mle_lambda):
         """Return the chi-squared goodness of fit statistic and p-value for a set of MLE paramters."""
@@ -717,7 +808,7 @@ class Exponential(Display):
         f_obs, _ = np.histogram(a=samples, bins=edges)
         chisq, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=len(f_obs)-2)
 
-        return chisq
+        return np.array([chisq, scipy.stats.chi2.isf(0.05, len(f_obs)-2)])
 
 class Gamma(Display):
 
@@ -743,7 +834,7 @@ class Gamma(Display):
 
         n = len(samples)
 
-        return ((a - 1) * np.sum(np.log(samples)) - n * scipy.special.gamma(a) - n * a * np.log(b) - (np.sum(samples) / b)) * -1
+        return ((a - 1) * np.sum(np.log(samples)) - n * np.log(scipy.special.gamma(a)) - n * a * np.log(b) - (np.sum(samples) / b)) * -1
 
     def MLE(self, samples, use_minimizer=False, a0=None, b0=None):
         """Calculate the maximum likelihood estimator (MLE) for a collection of
@@ -777,7 +868,7 @@ class Gamma(Display):
         f_obs, _ = np.histogram(a=samples, bins=edges)
         chisq, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=len(f_obs)-3)
 
-        return chisq
+        return np.array([chisq, scipy.stats.chi2.isf(0.05, len(f_obs)-3)])
 
 class Weibull(Display):
 
@@ -838,12 +929,7 @@ class Weibull(Display):
         f_obs, _ = np.histogram(a=samples, bins=edges)
         chisq, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=len(f_obs)-3)
 
-        # if chisq < scipy.stats.chi2.isf(0.01, len(f_obs)-3):
-        #     print('yay')
-        # else:
-        #     print('NAY')
-
-        return chisq
+        return np.array([chisq, scipy.stats.chi2.isf(0.05, len(f_obs)-3)])
 
 class Unknown(Display):
 
