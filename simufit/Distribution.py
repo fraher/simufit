@@ -446,7 +446,7 @@ class Distribution(IDistribution):
                 print('\n\n')
 
                 self._distribution_report.append(report)
-
+        
         best_distribution = dt.UNKNOWN.name.title()
         best_score = np.nan  
 
@@ -457,13 +457,13 @@ class Distribution(IDistribution):
                     best_distribution = dt.BERNOULLI.name                    
                 
                 if best_distribution != dt.BERNOULLI.name.title() and (best_score is np.nan or report.getScore() > best_score):
-                    best_distribution = report.getDistributionType()                
+                    best_distribution = report.getDistributionType()                                    
                     best_score = report.getScore()
         
         if best_distribution is not dt.UNKNOWN.name:
             print(best_distribution)            
             print(best_score)            
-            self.setDistribution(best_distribution)
+            self.setDistribution(dt[best_distribution.upper()])
         else:            
             print ('Could not identify distribution.')
 

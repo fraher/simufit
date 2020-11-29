@@ -36,6 +36,8 @@ class DistributionReport():
         return self._bernoulli
 
     def evaluateScore(self, samples):
+        """Calculates the proportional distance of a given Goodness of Fit value for a given evaluated
+        distribution and then is mapped to an inverse exponential to generate a score."""
         self._unique_elements = len(np.unique(samples))
         
         if self._distribution_type == dt.BERNOULLI.name.title():
@@ -46,7 +48,7 @@ class DistributionReport():
         
         if self._gof is not None and self._score != 1:
             if type(self._gof) is not str:
-                if self._gof[0] != np.nan and self._gof[1] != np.nan:                                           
+                if self._gof[0] != np.nan and self._gof[1] != np.nan and self._gof[0] is not None and self._gof[1] is not None:                                           
                     self._score = 1/np.exp((self._gof[0] - self._gof[1])/self._gof[1])
                     if self._gof[0] < self._gof[1]:
                         self._pass = True            
