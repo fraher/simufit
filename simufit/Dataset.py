@@ -20,7 +20,7 @@ class Dataset(QWidget):
         gridLayout = QtWidgets.QGridLayout()
         gridLayout.addWidget(QtWidgets.QLabel('File:'), 0, 0)
         self.fileTB = QtWidgets.QTextBrowser()
-        self.fileTB.setFixedSize(QtCore.QSize(400, 20))
+        self.fileTB.setFixedSize(QtCore.QSize(600, 40))
         self.browseButton = QtWidgets.QPushButton('Browse...')
         self.browseButton.clicked.connect(self.browseDialog)
         gridLayout.addWidget(self.fileTB, 0, 1, 1, 3)
@@ -43,11 +43,11 @@ class Dataset(QWidget):
 
         gridLayout.addWidget(QtWidgets.QLabel('Skip rows:'), 2, 0)
         self.skipRows = QtWidgets.QSpinBox(minimum=0)
-        self.skipRows.setFixedSize(40, 24)
+        self.skipRows.setFixedSize(60, 40)
         gridLayout.addWidget(self.skipRows)
         gridLayout.addWidget(QtWidgets.QLabel('Use column:'), 3, 0)
         self.useCol = QtWidgets.QSpinBox(minimum=0)
-        self.useCol.setFixedSize(40, 24)
+        self.useCol.setFixedSize(60, 40)
         gridLayout.addWidget(self.useCol)
 
         self.importButton = QtWidgets.QPushButton('Import')

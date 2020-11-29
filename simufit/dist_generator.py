@@ -105,8 +105,8 @@ class Fitter(QMainWindow):
 
         # MPL plot
         canvasHBox = QtWidgets.QHBoxLayout()
-        canvasHBox.addItem(QtWidgets.QSpacerItem(25, 0, qsp.Fixed, qsp.Fixed))
-        self.sc = MplCanvas(self, width=8, height=6, dpi=100)
+        canvasHBox.addItem(QtWidgets.QSpacerItem(0, 0, qsp.Fixed, qsp.Fixed))
+        self.sc = MplCanvas(self, width=10, height=7.5, dpi=100)
         self.sc.setSizePolicy(qsp.Fixed, qsp.Fixed)
         canvasHBox.addWidget(self.sc)
         canvasHBox.addItem(QtWidgets.QSpacerItem(0, 0, qsp.Expanding, qsp.Fixed))
@@ -119,7 +119,7 @@ class Fitter(QMainWindow):
 
         # Create grid layout for selecting distribution
         self.distSelector = QtWidgets.QComboBox()
-        self.distSelector.setFixedSize(QtCore.QSize(150, 24))
+        self.distSelector.setFixedSize(QtCore.QSize(150, 40))
         if self.dist is None or self.dist.name == 'Unknown':
             dists = ['Bernoulli', 'Binomial', 'Geometric', 'Uniform', 'Normal', 'Exponential', 'Gamma', 'Weibull']
             for dist in dists:
@@ -340,12 +340,12 @@ class Fitter(QMainWindow):
         if dist == 'Bernoulli':
             n = len(self.samples)
             x, y = np.unique(self.samples, return_counts=True)
-            self.sc.axes.scatter(x, y/n, alpha=0.5, color='lightskyblue', ec='white', label='Data')
+            self.sc.axes.scatter(x, y/n, alpha=0.6, s=150, color='lightskyblue', ec='white', label='Data')
             self.sc.axes.vlines(x, ymin=0, ymax=y/n)
         elif dist in ['Binomial', 'Geometric']:
             n = len(self.samples)
             x, y = np.unique(self.samples, return_counts=True)
-            self.sc.axes.scatter(x, y/n, alpha=0.5, color='lightskyblue', ec='white', label='Data')
+            self.sc.axes.scatter(x, y/n, alpha=0.6, s=150, color='lightskyblue', ec='white', label='Data')
             self.sc.axes.vlines(x, ymin=0, ymax=y/n)
             self.sc.axes.set_xticks(np.arange(1, np.max(self.samples)+1))
         else:
@@ -359,7 +359,7 @@ class Fitter(QMainWindow):
             p = self.slider1.value() / 1000
             x = np.arange(2)
             y = np.array([(1 - p), p])
-            self.sc.axes.scatter(x, y, alpha=0.5, color='lemonchiffon', ec='white', label='Fit')
+            self.sc.axes.scatter(x, y, alpha=0.6, s=150, color='mistyrose', ec='k', label='Fit')
             self.sc.axes.vlines(x, ymin=[0, 0], ymax=y)
             self.slider1Value.setText(str(round(p, 3)))
         elif dist == 'Binomial':
@@ -413,10 +413,11 @@ class Fitter(QMainWindow):
         if dist != 'Bernoulli':
             self.sc.axes.plot(x, f, label='Fit')
         self.sc.axes.set_ylim(bottom=0)
-        self.sc.axes.set_ylabel('Frequency', color='lightskyblue', fontsize=14, labelpad=14)
-        self.sc.axes.set_xlabel('x', color='lightskyblue', fontsize=14)
-        self.sc.axes.tick_params(axis='both', labelsize=14, labelcolor='lightskyblue', color='lightskyblue')
-        self.sc.axes.legend()
+        self.sc.axes.set_ylabel('Frequency', color='lightskyblue', fontsize=18, labelpad=14)
+        self.sc.axes.set_xlabel('x', color='lightskyblue', fontsize=18)
+        self.sc.axes.tick_params(axis='both', labelsize=18, labelcolor='lightskyblue', color='lightskyblue')
+        self.sc.axes.legend(fontsize=16)
+        self.sc.fig.tight_layout()
         self.sc.fig.canvas.draw()
 
 def show_histogram(samples, bins=None, comparison_distribution=None):
@@ -457,7 +458,7 @@ def run_fitter(samples=None, dist=None):
 
     # Set the color scheme
     app.setStyle("Fusion")
-    app.setStyleSheet("QComboBox{font-size: 16pt} QLabel{font-size: 16pt;}")
+    app.setStyleSheet("QComboBox{font-size: 14pt} QSpinBox{font-size: 14pt} QCheckBox{font-size: 14pt} QPushButton{font-size: 14pt} QLabel{font-size: 14pt;}")
     palette = QPalette()
     palette.setColor(QPalette.Window, QtGui.QColor(53, 53, 53))
     palette.setColor(QPalette.WindowText, QtCore.Qt.white)
