@@ -10,6 +10,8 @@ import numpy as np
 import inspect
 import copy
 
+from simufit.dist_generator import Bernoulli
+
 class Distribution(IDistribution):
     """The Distribution class contains a stateful collection of parameters which
     define a distribution for analysis. This includes information about the seed for
@@ -62,14 +64,27 @@ class Distribution(IDistribution):
         print("Distribution: ", str(self._type).replace("DistributionType.",""))
 
     def printReport(self):
-        """This method displays the distribution fitting report"""
-        sorted_reports = self._distribution_report.sort(key=lambda x: x._score, reverse=True)
+        """This method displays the distribution fitting report"""                
+        top_reports = []
+        nan_reports = []
+        bernoulli = None
 
-        for report in sorted_reports:
-            print('-------------\n')
-            report.printReport()
+        for report in self._distribution_report:            
+            if report.isBernoulli():
+                bernoulli = report
+            elif np.isnan(report.getScore()):                
+                nan_reports.append(report)
+            else:
+                top_reports.append(report)        
 
-        print('-------------\n')
+        top_reports.sort(key=lambda x: x.getScore(), reverse=True)        
+        if bernoulli is not None:
+            top_reports.insert(0, bernoulli)
+
+        print('\n')
+        [x.printReport() for x in top_reports]
+        [x.printReport() for x in nan_reports]
+
 
     # Distribution Parameters
     def setSeed(self, seed):
@@ -391,63 +406,23 @@ class Distribution(IDistribution):
                 method_args = inspect.getargspec(temp.Distribution.MLE).args
                 valid = True
 
-                # if 'use_minimizer' in method_args:
-                #     if use_minimizer is not None:
-                #         kwargs['use_minimizer'] = use_minimizer
-
-                #         if 'p0' in method_args :
-                #             if p0 is None:
-                #                 valid = False
-                #             else:
-                #                 kwargs['p0'] = p0
-
-                #         if 'lambd0' in method_args :
-                #             if lambd0 is None:
-                #                 valid = False
-                #             else:
-                #                 kwargs['lambd0'] = lambd0
-
-                #         if 'mean0' in method_args:
-                #             if mean0 is None:
-                #                 valid = False
-                #             else:
-                #                 kwargs['mean0'] = mean0
-
-                #         if 'var0' in method_args:
-                #             if var0 is None:
-                #                 valid = False
-                #             else:
-                #                 kwargs['var0'] = var0
-
-                # if 'a0' in method_args:
-                #     if a0 is None:
-                #         valid = False
-                #     else:
-                #         kwargs['a0'] = a0
-
-                # if 'b0' in method_args:
-                #     if b0 is None:
-                #         valid = False
-                #     else:
-                #         kwargs['b0'] = b0
-
-                if temp.Distribution.name == "Binomial":
+                if temp.Distribution.name.title() == dt.BINOMIAL.name.title():
                     if n is None:
                         valid = False
                     else:
                         kwargs['n'] = n
 
                 report = dr()
-                report.setDistributionType(temp.Distribution.name)
-                print('Evaluating {}'.format(temp.Distribution.name))
+                report.setDistributionType(temp.Distribution.name.title())
+                print('Evaluating {}'.format(temp.Distribution.name.title()))
                 print('-----------------------------------------------')
                 if valid:
                     print('Starting...')
                     mle_result = temp.Distribution.MLE(samples=temp._samples, **kwargs)     
 
-                    if temp.Distribution.name == 'Bernoulli':
+                    if temp.Distribution.name.title() == dt.BERNOULLI.name.title():
                         gof_result = 'No GOF for Bernoulli'
-                    elif temp.Distribution.name == 'Binomial':
+                    elif temp.Distribution.name.title() == dt.BINOMIAL.name.title():
                         gof_result = temp.Distribution.GOF(temp._samples, kwargs['n'], mle_result)
                     else:                        
                         gof_result = temp.Distribution.GOF(temp._samples, *mle_result)
@@ -472,19 +447,22 @@ class Distribution(IDistribution):
 
                 self._distribution_report.append(report)
 
-        best_distribution = dt.UNKNOWN
-        best_score = np.nan
+        best_distribution = dt.UNKNOWN.name.title()
+        best_score = np.nan  
 
         for report in self._distribution_report:
             report.evaluateScore(self._samples)
             if report.isPass():
-                if best_score is np.nan or report.getScore() > best_score:
-                    best_score = report.getScore()
+                if report.isBernoulli() or best_distribution == dt.BERNOULLI.name.title():
+                    best_distribution = dt.BERNOULLI.name                    
+                
+                if best_distribution != dt.BERNOULLI.name.title() and (best_score is np.nan or report.getScore() > best_score):
                     best_distribution = report.getDistributionType()                
+                    best_score = report.getScore()
         
-        if best_distribution is not dt.UNKNOWN:
-            print(best_distribution)
-            print(best_score)
+        if best_distribution is not dt.UNKNOWN.name:
+            print(best_distribution)            
+            print(best_score)            
             self.setDistribution(best_distribution)
         else:            
             print ('Could not identify distribution.')
