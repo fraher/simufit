@@ -63,7 +63,9 @@ class Distribution(IDistribution):
 
     def printReport(self):
         """This method displays the distribution fitting report"""
-        for report in self._distribution_report:
+        sorted_reports = self._distribution_report.sort(key=lambda x: x._score, reverse=True)
+
+        for report in sorted_reports:
             print('-------------\n')
             report.printReport()
 
@@ -124,6 +126,7 @@ class Distribution(IDistribution):
 
             random_distribution = rand.choice([x for x in list(dt) if x != dt.UNKNOWN])
             distribution = getattr(dg, str(random_distribution).replace('DistributionType.','').title())()
+            print(random_distribution.name)
 
             # Generate values for required parameters
             min_range = None
@@ -348,11 +351,18 @@ class Distribution(IDistribution):
     def GOF(self, **kwargs):
         """Run chi-square goodness of fit (GOF) method for the loaded distribution"""
 
+        if self._type is None:
+            print('Set a distribution first using the setDistribution method.')
+            return
+
         if self._type == dt.UNKNOWN:
             print("Must identify distribution type before performing GOF.")
             return
+
         elif self._type == dt.BERNOULLI:
             print('No GOF test for Bernoulli-distributed samples.')
+            return np.nan
+            
         else:
             if len(kwargs) > 0:
                 mle_params = self.Distribution.MLE(self._samples, **kwargs)
@@ -381,45 +391,45 @@ class Distribution(IDistribution):
                 method_args = inspect.getargspec(temp.Distribution.MLE).args
                 valid = True
 
-                if 'use_minimizer' in method_args:
-                    if use_minimizer is not None:
-                        kwargs['use_minimizer'] = use_minimizer
+                # if 'use_minimizer' in method_args:
+                #     if use_minimizer is not None:
+                #         kwargs['use_minimizer'] = use_minimizer
 
-                        if 'p0' in method_args :
-                            if p0 is None:
-                                valid = False
-                            else:
-                                kwargs['p0'] = p0
+                #         if 'p0' in method_args :
+                #             if p0 is None:
+                #                 valid = False
+                #             else:
+                #                 kwargs['p0'] = p0
 
-                        if 'lambd0' in method_args :
-                            if lambd0 is None:
-                                valid = False
-                            else:
-                                kwargs['lambd0'] = lambd0
+                #         if 'lambd0' in method_args :
+                #             if lambd0 is None:
+                #                 valid = False
+                #             else:
+                #                 kwargs['lambd0'] = lambd0
 
-                        if 'mean0' in method_args:
-                            if mean0 is None:
-                                valid = False
-                            else:
-                                kwargs['mean0'] = mean0
+                #         if 'mean0' in method_args:
+                #             if mean0 is None:
+                #                 valid = False
+                #             else:
+                #                 kwargs['mean0'] = mean0
 
-                        if 'var0' in method_args:
-                            if var0 is None:
-                                valid = False
-                            else:
-                                kwargs['var0'] = var0
+                #         if 'var0' in method_args:
+                #             if var0 is None:
+                #                 valid = False
+                #             else:
+                #                 kwargs['var0'] = var0
 
-                if 'a0' in method_args:
-                    if a0 is None:
-                        valid = False
-                    else:
-                        kwargs['a0'] = a0
+                # if 'a0' in method_args:
+                #     if a0 is None:
+                #         valid = False
+                #     else:
+                #         kwargs['a0'] = a0
 
-                if 'b0' in method_args:
-                    if b0 is None:
-                        valid = False
-                    else:
-                        kwargs['b0'] = b0
+                # if 'b0' in method_args:
+                #     if b0 is None:
+                #         valid = False
+                #     else:
+                #         kwargs['b0'] = b0
 
                 if temp.Distribution.name == "Binomial":
                     if n is None:
@@ -433,15 +443,22 @@ class Distribution(IDistribution):
                 print('-----------------------------------------------')
                 if valid:
                     print('Starting...')
-                    result = temp.Distribution.MLE(samples=temp._samples, **kwargs)
+                    mle_result = temp.Distribution.MLE(samples=temp._samples, **kwargs)     
+
+                    if temp.Distribution.name == 'Bernoulli':
+                        gof_result = 'No GOF for Bernoulli'
+                    elif temp.Distribution.name == 'Binomial':
+                        gof_result = temp.Distribution.GOF(temp._samples, kwargs['n'], mle_result)
+                    else:                        
+                        gof_result = temp.Distribution.GOF(temp._samples, *mle_result)
                     try:
-                        report.setMLE(result)
+                        report.setMLE(mle_result)
                     except Exception as e:
                         report.setMLE('Error: {}'.format(e))
                         print('Error: {}'.format(e))
 
                     try:
-                        report.setGOF(None)
+                        report.setGOF(gof_result)
                     except Exception as e:
                         report.setGOF('Error: {}'.format(e))
 
@@ -454,3 +471,22 @@ class Distribution(IDistribution):
                 print('\n\n')
 
                 self._distribution_report.append(report)
+
+        best_distribution = dt.UNKNOWN
+        best_score = np.nan
+
+        for report in self._distribution_report:
+            report.evaluateScore(self._samples)
+            if report.isPass():
+                if best_score is np.nan or report.getScore() > best_score:
+                    best_score = report.getScore()
+                    best_distribution = report.getDistributionType()                
+        
+        if best_distribution is not dt.UNKNOWN:
+            print(best_distribution)
+            print(best_score)
+            self.setDistribution(best_distribution)
+        else:            
+            print ('Could not identify distribution.')
+
+        
