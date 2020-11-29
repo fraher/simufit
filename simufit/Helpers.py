@@ -121,6 +121,7 @@ def mergeBins(samples, func, *args):
     # with bins to the right until counts exceed 5. If cannot reach 5 by merging
     # all right-side bins, merge all remaining to the right. Then merge to the
     # left until counts exceed 5.
+    i = 0
     while len(bad_bins) > 0:
         bad_bin = bad_bins.pop(0)
         merge_bin = np.argmax(np.cumsum(expected[bad_bin:]) > 5) + bad_bin
@@ -135,5 +136,8 @@ def mergeBins(samples, func, *args):
             else:
                 merge_bin = bad_bin - np.argmax(expected[::-1].cumsum() > 5)
                 edges, expected, bad_bins = getBadBins(n, edges, merge_bin, bad_bin, func, *args)  # Reverse the order here b/c we are merging left
+        i += 1
+        if i > 1000:
+            return None, None
 
     return edges, expected

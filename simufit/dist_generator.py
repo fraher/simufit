@@ -238,7 +238,7 @@ class Fitter(QMainWindow):
             if self.dist.name == 'Bernoulli':
                 self.statusBar().showMessage('No goodness of fit test for Bernoulli.')
             else:
-                self.statusBar().showMessage(f'Failed to find MLE parameters! Underlying distribution may be incorrect.', 10000)
+                self.statusBar().showMessage(f'Goodness-of-fit test failed!.', 10000)
                 print(e)
 
     def importData(self):
@@ -595,10 +595,14 @@ class Binomial(Display):
         """Returns the chi-squared goodness of fit statistic for a set of MLE paramters."""
 
         edges, f_exp = mergeBins(samples, scipy.stats.binom, n, mle_p)
-        f_obs, _ = np.histogram(a=samples, bins=edges+1)
-        chisq, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=len(f_obs)-2)
+        if edges is not None:
+            f_obs, _ = np.histogram(a=samples, bins=edges+1)
+            chisq, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=len(f_obs)-2)
 
-        return np.array([chisq, scipy.stats.chi2.isf(0.05, len(f_obs)-2)])
+            return np.array([chisq, scipy.stats.chi2.isf(0.05, len(f_obs)-2)])
+        else:
+            return None, None
+
 
 class Geometric(Display):
 
@@ -649,10 +653,13 @@ class Geometric(Display):
         """Returns the chi-squared goodness of fit statistic for a set of MLE paramters."""
 
         edges, f_exp = mergeBins(samples, scipy.stats.geom, mle_p)
-        f_obs, _ = np.histogram(a=samples, bins=edges+1)
-        chisq, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=len(f_obs)-2)
+        if edges is not None:
+            f_obs, _ = np.histogram(a=samples, bins=edges+1)
+            chisq, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=len(f_obs)-2)
 
-        return np.array([chisq, scipy.stats.chi2.isf(0.05, len(f_obs)-2)])
+            return np.array([chisq, scipy.stats.chi2.isf(0.05, len(f_obs)-2)])
+        else:
+            return None, None
 
 class Uniform(Display):
 
@@ -681,10 +688,13 @@ class Uniform(Display):
         """Returns the chi-squared goodness of fit statistic for a set of MLE paramters."""
 
         edges, f_exp = mergeBins(samples, scipy.stats.uniform, mle_a, mle_b)
-        f_obs, _ = np.histogram(a=samples, bins=edges)
-        chisq, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=len(f_obs)-3)
+        if edges is not None:
+            f_obs, _ = np.histogram(a=samples, bins=edges)
+            chisq, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=len(f_obs)-3)
 
-        return np.array([chisq, scipy.stats.chi2.isf(0.05, len(f_obs)-3)])
+            return np.array([chisq, scipy.stats.chi2.isf(0.05, len(f_obs)-3)])
+        else:
+            return None, None
 
 class Normal(Display):
 
@@ -746,10 +756,13 @@ class Normal(Display):
         """Return the chi-squared goodness of fit statistic and p-value for a set of MLE paramters."""
 
         edges, f_exp = mergeBins(samples, scipy.stats.norm, mle_mu, np.sqrt(mle_var))
-        f_obs, _ = np.histogram(a=samples, bins=edges)
-        chisq, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=len(f_obs)-3)
+        if edges is not None:
+            f_obs, _ = np.histogram(a=samples, bins=edges)
+            chisq, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=len(f_obs)-3)
 
-        return np.array([chisq, scipy.stats.chi2.isf(0.05, len(f_obs)-3)])
+            return np.array([chisq, scipy.stats.chi2.isf(0.05, len(f_obs)-3)])
+        else:
+            return None, None
 
 class Exponential(Display):
 
@@ -806,10 +819,13 @@ class Exponential(Display):
         """Return the chi-squared goodness of fit statistic and p-value for a set of MLE paramters."""
 
         edges, f_exp = mergeBins(samples, scipy.stats.expon, 1/mle_lambda)
-        f_obs, _ = np.histogram(a=samples, bins=edges)
-        chisq, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=len(f_obs)-2)
+        if edges is not None:
+            f_obs, _ = np.histogram(a=samples, bins=edges)
+            chisq, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=len(f_obs)-2)
 
-        return np.array([chisq, scipy.stats.chi2.isf(0.05, len(f_obs)-2)])
+            return np.array([chisq, scipy.stats.chi2.isf(0.05, len(f_obs)-2)])
+        else:
+            return None, None
 
 class Gamma(Display):
 
@@ -866,10 +882,13 @@ class Gamma(Display):
         """Return the chi-squared goodness of fit statistic and p-value for a set of MLE paramters."""
 
         edges, f_exp = mergeBins(samples, scipy.stats.gamma, mle_a, mle_b)
-        f_obs, _ = np.histogram(a=samples, bins=edges)
-        chisq, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=len(f_obs)-3)
+        if edges is not None:
+            f_obs, _ = np.histogram(a=samples, bins=edges)
+            chisq, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=len(f_obs)-3)
 
-        return np.array([chisq, scipy.stats.chi2.isf(0.05, len(f_obs)-3)])
+            return np.array([chisq, scipy.stats.chi2.isf(0.05, len(f_obs)-3)])
+        else:
+            return None, None
 
 class Weibull(Display):
 
@@ -927,10 +946,13 @@ class Weibull(Display):
         """Return the chi-squared goodness of fit statistic and p-value for a set of MLE paramters."""
 
         edges, f_exp = mergeBins(samples, scipy.stats.weibull_min, mle_a, mle_b)
-        f_obs, _ = np.histogram(a=samples, bins=edges)
-        chisq, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=len(f_obs)-3)
+        if edges is not None:
+            f_obs, _ = np.histogram(a=samples, bins=edges)
+            chisq, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=len(f_obs)-3)
 
-        return np.array([chisq, scipy.stats.chi2.isf(0.05, len(f_obs)-3)])
+            return np.array([chisq, scipy.stats.chi2.isf(0.05, len(f_obs)-3)])
+        else:
+            return None, None
 
 class Unknown(Display):
 
