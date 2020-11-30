@@ -65,25 +65,15 @@ class Distribution(IDistribution):
 
     def printReport(self):
         """This method displays the distribution fitting report"""                
-        top_reports = []
-        nan_reports = []
-        bernoulli = None
 
-        for report in self._distribution_report:            
-            if report.isBernoulli():
-                bernoulli = report
-            elif np.isnan(report.getScore()):                
-                nan_reports.append(report)
-            else:
-                top_reports.append(report)        
+        if len(self._distribution_report) == 0:        
+            print('Please run identifyDistribution method first.')
+            return
 
-        top_reports.sort(key=lambda x: x.getScore(), reverse=True)        
-        if bernoulli is not None:
-            top_reports.insert(0, bernoulli)
-
-        print('\n')
-        [x.printReport() for x in top_reports]
-        [x.printReport() for x in nan_reports]
+        # Display the Report
+        print('\n')        
+        self._distribution_report[0].printReportHeader()
+        [x.printReport() for x in self._distribution_report]            
 
 
     # Distribution Parameters
@@ -447,24 +437,72 @@ class Distribution(IDistribution):
 
                 self._distribution_report.append(report)
         
-        best_distribution = dt.UNKNOWN.name.title()
-        best_score = np.nan  
+        # Evaluate and Order Reports by Best Fit
+        top_reports = []
+        nan_reports = []
+        bernoulli_report = None
+        is_bernoulli = False
 
         for report in self._distribution_report:
-            report.evaluateScore(self._samples)
-            if report.isPass():
-                if report.isBernoulli() or best_distribution == dt.BERNOULLI.name.title():
-                    best_distribution = dt.BERNOULLI.name                    
-                
-                if best_distribution != dt.BERNOULLI.name.title() and (best_score is np.nan or report.getScore() > best_score):
-                    best_distribution = report.getDistributionType()                                    
-                    best_score = report.getScore()
-        
-        if best_distribution is not dt.UNKNOWN.name:
-            print(best_distribution)            
-            print(best_score)            
-            self.setDistribution(dt[best_distribution.upper()])
-        else:            
-            print ('Could not identify distribution.')
+            report.evaluateDistribution(self._samples)
 
+        for report in self._distribution_report:            
+            if report.isBernoulli():
+                is_bernoulli = True
+            
+            if report.getDistributionType() == dt.BERNOULLI.name.title():
+                bernoulli = report
+                            
+            if report.isMeasureTypeMatch():
+                if report.getMeasureType() == mt.DISCRETE:
+                    top_reports.append(report)
+                else:
+                    if np.isnan(report.getScore()):                
+                        nan_reports.append(report)
+                    else:
+                        top_reports.append(report)    
+            else:
+                nan_reports.append(report)        
+        
+        missing_values = list()
+
+        for report in top_reports:
+            if np.isnan(report.getScore()):
+                missing_values.append(report)
+                
+        for report in missing_values:
+            top_reports.remove(report)
+
+        top_reports.sort(key=lambda x: x.getScore(), reverse=True)
+        top_reports = top_reports + missing_values
+        missing_values = list()
+
+        for report in nan_reports:
+            if np.isnan(report.getScore()):
+                missing_values.append(report)
+                
+        for report in missing_values:
+            nan_reports.remove(report)
+
+        nan_reports.sort(key=lambda x: x.getScore(), reverse=True)                
+        nan_reports = nan_reports + missing_values        
+
+        self._distribution_report = top_reports + nan_reports
+        
+        self._distribution_report.remove(bernoulli)
+        if is_bernoulli:        
+            self._distribution_report.insert(0, bernoulli)            
+        else:
+            self._distribution_report.insert(len(self._distribution_report), bernoulli)            
+        
+        best_distribution = self._distribution_report[0].getDistributionType()
+
+        if self._distribution_report[0].isPass():            
+            print('Distribution: ', best_distribution)
+            self.setDistribution(dt[best_distribution.upper()])
+        else:
+            print('Unable to identify, most likely distribution: ', best_distribution)
+
+            if best_distribution == 'Binomial':
+                print('Verify the number of bins.')
         
