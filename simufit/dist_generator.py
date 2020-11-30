@@ -895,7 +895,7 @@ class Weibull(Display):
     def __init__(self):
         self.name = 'Weibull'
         self.measure_type = mt.CONTINUOUS
-        self._parameters = [{'label':'a', 'span':[0,100]}]
+        self._parameters = [{'label':'a', 'span':[1,100]}]
 
     def sample(self, a, b=1, size=None, seed=None):
         """Get samples from Weibull(a, b). The shape parameter is a, the scale parameter is b (default 1).
