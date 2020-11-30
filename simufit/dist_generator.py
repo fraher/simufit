@@ -212,23 +212,23 @@ class Fitter(QMainWindow):
                     self.slider1.setValue(int(mle_params * 1000))
                     self.slider1Value.setText(str(round(mle_params[0], 3)))
                 elif self.dist.name == 'Uniform':
-                    self.slider1.setValue(int(np.floor(mle_params[0])))
-                    self.slider2.setValue(int(np.ceil(mle_params[1])))
-                    self.slider1Value.setText(str(int(np.floor(mle_params[0]))))
-                    self.slider2Value.setText(str(int(np.ceil(mle_params[1]))))
+                    self.slider1.setValue(int(np.round(mle_params[0], 1) * 10))
+                    self.slider2.setValue(int(np.round(mle_params[1], 1) * 10))
+                    self.slider1Value.setText(str(np.round(mle_params[0], 2)))
+                    self.slider2Value.setText(str(np.round(mle_params[1], 2)))
                 elif self.dist.name == 'Normal':
-                    self.slider2.setValue(int(mle_params[0] * 100))
-                    self.slider3.setValue(int(mle_params[1] * 100))
-                    self.slider2Value.setText(str(round(mle_params[0], 2)))
-                    self.slider3Value.setText(str(round(mle_params[1], 2)))
+                    self.slider2.setValue(int(np.round(mle_params[0], 1) * 10))
+                    self.slider3.setValue(int(np.round(mle_params[1], 1) * 10))
+                    self.slider2Value.setText(str(np.round(mle_params[0], 2)))
+                    self.slider3Value.setText(str(np.round(mle_params[1], 2)))
                 elif self.dist.name == 'Exponential':
                     self.slider1.setValue(int(mle_params * 10))
-                    self.slider1Value.setText(str(round(mle_params[0], 1)))
+                    self.slider1Value.setText(str(round(mle_params[0], 2)))
                 elif self.dist.name == 'Gamma' or self.dist.name == 'Weibull':
                     self.slider2.setValue(int(mle_params[0] * 10))
                     self.slider3.setValue(int(mle_params[1] * 10))
-                    self.slider2Value.setText(str(round(mle_params[0], 3)))
-                    self.slider3Value.setText(str(round(mle_params[1], 3)))
+                    self.slider2Value.setText(str(round(mle_params[0], 2)))
+                    self.slider3Value.setText(str(round(mle_params[1], 2)))
                 chisq0, chisq = self.dist.GOF(self.samples, *mle_params)
             if chisq0 < chisq:
                 self.statusBar().showMessage(f'Accept fit with χ0^2 = {round(chisq0, 3)} < χ^2 = {round(chisq, 3)}', 10000)
@@ -317,8 +317,8 @@ class Fitter(QMainWindow):
             if dist == 'Normal':
                 self.slider2Label.setText('Mean')
                 self.slider3Label.setText('Variance')
-                self.slider2.setRange(-9999, 9999)
-                self.slider3.setRange(1, 9999)
+                self.slider2.setRange(-999, 999)
+                self.slider3.setRange(1, 999)
             else:
                 self.slider2Label.setText('a')
                 self.slider3Label.setText('b')
@@ -376,15 +376,15 @@ class Fitter(QMainWindow):
             self.slider1Value.setText(str(round(p, 3)))
         elif dist == 'Uniform':
             self.slider2.setValue(np.max([self.slider1.value(), self.slider2.value()]))  # Ensure that b never goes below a
-            a = self.slider1.value()
-            b = self.slider2.value()
+            a = self.slider1.value() / 10
+            b = self.slider2.value() / 10
             x = np.linspace(scipy.stats.uniform.ppf(0.001, loc=a, scale=b-a), scipy.stats.uniform.ppf(0.999, loc=a, scale=b-a), 100)
             f = scipy.stats.uniform.pdf(x, loc=a, scale=b-a)
-            self.slider1Value.setText(str(self.slider1.value()))
-            self.slider2Value.setText(str(self.slider2.value()))
+            self.slider1Value.setText(str(np.round(a, 1)))
+            self.slider2Value.setText(str(np.round(b, 1)))
         elif dist == 'Normal':
-            mean = self.slider2.value() / 100
-            var = self.slider3.value() / 100
+            mean = self.slider2.value() / 10
+            var = self.slider3.value() / 10
             std = np.sqrt(var)
             x = np.linspace(scipy.stats.norm.ppf(0.001, loc=mean, scale=std), scipy.stats.norm.ppf(0.999, loc=mean, scale=std), 100)
             f = scipy.stats.norm.pdf(x, loc=mean, scale=std)
@@ -652,14 +652,17 @@ class Geometric(Display):
     def GOF(self, samples, mle_p):
         """Returns the chi-squared goodness of fit statistic for a set of MLE paramters."""
 
+        chisq0, chisq = None, None
+
         edges, f_exp = mergeBins(samples, scipy.stats.geom, mle_p)
         if edges is not None:
             f_obs, _ = np.histogram(a=samples, bins=edges+1)
-            chisq, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=len(f_obs)-2)
+            ddof = len(f_obs) - 2
+            if ddof > 0:
+                chisq0, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=ddof)
+                chisq = scipy.stats.chi2.isf(0.05, ddof)
 
-            return np.array([chisq, scipy.stats.chi2.isf(0.05, len(f_obs)-2)])
-        else:
-            return None, None
+        return np.array([chisq0, chisq])
 
 class Uniform(Display):
 
@@ -687,14 +690,17 @@ class Uniform(Display):
     def GOF(self, samples, mle_a, mle_b):
         """Returns the chi-squared goodness of fit statistic for a set of MLE paramters."""
 
+        chisq0, chisq = None, None
+
         edges, f_exp = mergeBins(samples, scipy.stats.uniform, mle_a, mle_b)
         if edges is not None:
             f_obs, _ = np.histogram(a=samples, bins=edges)
-            chisq, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=len(f_obs)-3)
+            ddof = len(f_obs) - 3
+            if ddof > 0:
+                chisq0, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=ddof)
+                chisq = scipy.stats.chi2.isf(0.05, ddof)
 
-            return np.array([chisq, scipy.stats.chi2.isf(0.05, len(f_obs)-3)])
-        else:
-            return None, None
+        return np.array([chisq0, chisq])
 
 class Normal(Display):
 
@@ -755,14 +761,17 @@ class Normal(Display):
     def GOF(self, samples, mle_mu, mle_var):
         """Return the chi-squared goodness of fit statistic and p-value for a set of MLE paramters."""
 
+        chisq0, chisq = None, None
+
         edges, f_exp = mergeBins(samples, scipy.stats.norm, mle_mu, np.sqrt(mle_var))
         if edges is not None:
             f_obs, _ = np.histogram(a=samples, bins=edges)
-            chisq, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=len(f_obs)-3)
+            ddof = len(f_obs) - 3
+            if ddof > 0:
+                chisq0, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=ddof)
+                chisq = scipy.stats.chi2.isf(0.05, ddof)
 
-            return np.array([chisq, scipy.stats.chi2.isf(0.05, len(f_obs)-3)])
-        else:
-            return None, None
+        return np.array([chisq0, chisq])
 
 class Exponential(Display):
 
@@ -818,14 +827,17 @@ class Exponential(Display):
     def GOF(self, samples, mle_lambda):
         """Return the chi-squared goodness of fit statistic and p-value for a set of MLE paramters."""
 
+        chisq0, chisq = None, None
+
         edges, f_exp = mergeBins(samples, scipy.stats.expon, 1/mle_lambda)
         if edges is not None:
             f_obs, _ = np.histogram(a=samples, bins=edges)
-            chisq, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=len(f_obs)-2)
+            ddof = len(f_obs) - 2
+            if ddof > 0:
+                chisq0, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=ddof)
+                chisq = scipy.stats.chi2.isf(0.05, len(f_obs)-2)
 
-            return np.array([chisq, scipy.stats.chi2.isf(0.05, len(f_obs)-2)])
-        else:
-            return None, None
+        return np.array([chisq0, chisq])
 
 class Gamma(Display):
 
@@ -881,14 +893,17 @@ class Gamma(Display):
     def GOF(self, samples, mle_a, mle_b):
         """Return the chi-squared goodness of fit statistic and p-value for a set of MLE paramters."""
 
+        chisq0, chisq = None, None
+
         edges, f_exp = mergeBins(samples, scipy.stats.gamma, mle_a, mle_b)
         if edges is not None:
             f_obs, _ = np.histogram(a=samples, bins=edges)
-            chisq, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=len(f_obs)-3)
+            ddof = len(f_obs) - 3
+            if ddof > 0:
+                chisq0, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=ddof)
+                chisq = scipy.stats.chi2.isf(0.05, ddof)
 
-            return np.array([chisq, scipy.stats.chi2.isf(0.05, len(f_obs)-3)])
-        else:
-            return None, None
+        return np.array([chisq0, chisq])
 
 class Weibull(Display):
 
@@ -945,14 +960,17 @@ class Weibull(Display):
     def GOF(self, samples, mle_a, mle_b):
         """Return the chi-squared goodness of fit statistic and p-value for a set of MLE paramters."""
 
+        chisq0, chisq = None, None
+
         edges, f_exp = mergeBins(samples, scipy.stats.weibull_min, mle_a, mle_b)
         if edges is not None:
             f_obs, _ = np.histogram(a=samples, bins=edges)
-            chisq, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=len(f_obs)-3)
+            ddof = len(f_obs) - 3
+            if ddof > 0:
+                chisq0, _ = scipy.stats.chisquare(f_obs=f_obs, f_exp=f_exp, ddof=ddof)
+                chisq = scipy.stats.chi2.isf(0.05, ddof)
 
-            return np.array([chisq, scipy.stats.chi2.isf(0.05, len(f_obs)-3)])
-        else:
-            return None, None
+        return np.array([chisq0, chisq])
 
 class Unknown(Display):
 
