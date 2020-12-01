@@ -64,16 +64,16 @@ class Distribution(IDistribution):
         print("Distribution: ", str(self._type).replace("DistributionType.",""))
 
     def printReport(self):
-        """This method displays the distribution fitting report"""                
+        """This method displays the distribution fitting report"""
 
-        if len(self._distribution_report) == 0:        
+        if len(self._distribution_report) == 0:
             print('Please run identifyDistribution method first.')
             return
 
         # Display the Report
-        print('\n')        
+        print('\n')
         self._distribution_report[0].printReportHeader()
-        [x.printReport() for x in self._distribution_report]            
+        [x.printReport() for x in self._distribution_report]
 
 
     # Distribution Parameters
@@ -235,7 +235,10 @@ class Distribution(IDistribution):
     # Statistical Methods
     def getMedian(self):
         """This method returns the median value of the sample set"""
-        raise NotImplementedError
+        if len(self._samples) > 0:
+            return np.median(self._samples)
+        else:
+            print('No samples have been generated/loaded yet.')
 
     def getExpectedValue(self):
         """This method returns the expected value of the sample set"""
@@ -367,7 +370,7 @@ class Distribution(IDistribution):
         elif self._type == dt.BERNOULLI:
             print('No GOF test for Bernoulli-distributed samples.')
             return np.nan
-            
+
         else:
             if len(kwargs) > 0:
                 mle_params = self.Distribution.MLE(self._samples, **kwargs)
@@ -408,13 +411,13 @@ class Distribution(IDistribution):
                 print('-----------------------------------------------')
                 if valid:
                     print('Starting...')
-                    mle_result = temp.Distribution.MLE(samples=temp._samples, **kwargs)     
+                    mle_result = temp.Distribution.MLE(samples=temp._samples, **kwargs)
 
                     if temp.Distribution.name.title() == dt.BERNOULLI.name.title():
                         gof_result = 'No GOF for Bernoulli'
                     elif temp.Distribution.name.title() == dt.BINOMIAL.name.title():
                         gof_result = temp.Distribution.GOF(temp._samples, kwargs['n'], mle_result)
-                    else:                        
+                    else:
                         gof_result = temp.Distribution.GOF(temp._samples, *mle_result)
                     try:
                         report.setMLE(mle_result)
@@ -436,7 +439,7 @@ class Distribution(IDistribution):
                 print('\n\n')
 
                 self._distribution_report.append(report)
-        
+
         # Evaluate and Order Reports by Best Fit
         top_reports = []
         nan_reports = []
@@ -446,30 +449,30 @@ class Distribution(IDistribution):
         for report in self._distribution_report:
             report.evaluateDistribution(self._samples)
 
-        for report in self._distribution_report:            
+        for report in self._distribution_report:
             if report.isBernoulli():
                 is_bernoulli = True
-            
+
             if report.getDistributionType() == dt.BERNOULLI.name.title():
                 bernoulli = report
-                            
+
             if report.isMeasureTypeMatch():
                 if report.getMeasureType() == mt.DISCRETE:
                     top_reports.append(report)
                 else:
-                    if np.isnan(report.getScore()):                
+                    if np.isnan(report.getScore()):
                         nan_reports.append(report)
                     else:
-                        top_reports.append(report)    
+                        top_reports.append(report)
             else:
-                nan_reports.append(report)        
-        
+                nan_reports.append(report)
+
         missing_values = list()
 
         for report in top_reports:
             if np.isnan(report.getScore()):
                 missing_values.append(report)
-                
+
         for report in missing_values:
             top_reports.remove(report)
 
@@ -480,24 +483,24 @@ class Distribution(IDistribution):
         for report in nan_reports:
             if np.isnan(report.getScore()):
                 missing_values.append(report)
-                
+
         for report in missing_values:
             nan_reports.remove(report)
 
-        nan_reports.sort(key=lambda x: x.getScore(), reverse=True)                
-        nan_reports = nan_reports + missing_values        
+        nan_reports.sort(key=lambda x: x.getScore(), reverse=True)
+        nan_reports = nan_reports + missing_values
 
         self._distribution_report = top_reports + nan_reports
-        
+
         self._distribution_report.remove(bernoulli)
-        if is_bernoulli:        
-            self._distribution_report.insert(0, bernoulli)            
+        if is_bernoulli:
+            self._distribution_report.insert(0, bernoulli)
         else:
-            self._distribution_report.insert(len(self._distribution_report), bernoulli)            
-        
+            self._distribution_report.insert(len(self._distribution_report), bernoulli)
+
         best_distribution = self._distribution_report[0].getDistributionType()
 
-        if self._distribution_report[0].isPass():            
+        if self._distribution_report[0].isPass():
             print('Distribution: ', best_distribution)
             self.setDistribution(dt[best_distribution.upper()])
         else:
@@ -505,4 +508,3 @@ class Distribution(IDistribution):
 
             if best_distribution == 'Binomial':
                 print('Verify the number of bins.')
-        
