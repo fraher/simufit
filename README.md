@@ -222,7 +222,7 @@ pip wheel -r .\src\requirements.txt
 
 ## Example of loading data from CSV
 ```
-from simufit.dist_generator import run_fitter
+from simufit.Display import run_fitter
 run_fitter()
 ```
 
