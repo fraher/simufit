@@ -235,7 +235,10 @@ class Distribution(IDistribution):
     # Statistical Methods
     def getMedian(self):
         """This method returns the median value of the sample set"""
-        raise NotImplementedError
+        if len(self._samples) > 0:
+            return np.median(self._samples)
+        else:
+            print('No samples have been generated/loaded yet.')
 
     def getExpectedValue(self):
         """This method returns the expected value of the sample set"""
