@@ -58,7 +58,7 @@ class Dataset(QWidget):
         layout.addWidget(self.statusBar)
         self.setLayout(layout)
 
-    def browseDialog(self):
+    def browseDialog(self, commandLine=False):
 
         fileFilter = "Data file (*.txt *.TXT *.csv *.CSV)"
 
@@ -69,7 +69,10 @@ class Dataset(QWidget):
             self.fileTB.clear()
             self.fileTB.append(filepath)
 
-    def importData(self):
+        if commandLine:
+            return filepath
+
+    def importData(self, commandLine=False):
 
         filepath = self.fileTB.toPlainText()
 
