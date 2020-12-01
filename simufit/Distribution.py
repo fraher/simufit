@@ -249,8 +249,10 @@ class Distribution(IDistribution):
 
     def getVariance(self):
         """This method returns the variance of the sample set"""
-        # TODO: Write Method
-        raise NotImplementedError
+        if len(self._samples) > 0:
+            return np.var(self._samples)
+        else:
+            print('No samples have been generated/loaded yet.')
 
     def getStandardDeviation(self):
         """This method returns the standard deviation of the sample set"""
