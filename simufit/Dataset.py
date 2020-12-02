@@ -2,7 +2,7 @@ from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtWidgets import QWidget, QFileDialog
 from PyQt5.QtWidgets import QSizePolicy as qsp
 import numpy as np
-
+from simufit.Types import DistributionType as dt
 
 class Dataset(QWidget):
 
@@ -81,7 +81,8 @@ class Dataset(QWidget):
             skip_header = self.skipRows.value()
             usecols = self.useCol.value()
             self.mw.samples = np.genfromtxt(fname=filepath, delimiter=delimiter, skip_header=skip_header, usecols=usecols)
-
+            self.mw.distribution.setSamples(self.mw.samples)            
+            self.mw.distribution.setDistribution(dt.UNKNOWN)            
             self.mw.sc.axes.clear()
             self.mw.sc.axes.hist(self.mw.samples, bins=np.histogram_bin_edges(self.mw.samples, 'fd'), density=True, color=(152/255, 200/255, 132/255), ec='white')
             self.mw.sc.fig.canvas.draw_idle()        

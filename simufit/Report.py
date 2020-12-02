@@ -62,7 +62,7 @@ class DistributionReport():
         distribution and then is mapped to an inverse exponential to generate a score."""
         self._unique_elements = len(np.unique(samples))
         
-        if np.all(samples - samples.astype(np.int32) == 0):
+        if np.allclose(np.round(samples) - samples, 0):
             self._measure_type = mt.DISCRETE
         else:
             self._measure_type = mt.CONTINUOUS                

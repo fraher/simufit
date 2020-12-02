@@ -186,6 +186,7 @@ class Distribution(IDistribution):
     def setSamples(self, samples):
         """This method loads a collection of samples"""
         self._samples = samples
+        self._size = len(samples)
         self._range = [min(self._samples), max(self._samples)] # Update the range
 
     def getSamples(self):
