@@ -70,7 +70,7 @@ x.Distribution.MLE(x._samples, use_minimizer=True, x0=0.42)
 ```
 
 ### Identify Unknown Distribution
-To run multiple tests (i.e. MLE, GOF, etc..) to identify the distribution, use identifyDistribution with the required parameters for the MLE of a given distribution type each one will be executed. If a parameter is missing, that distribution will be skipped. 
+To run multiple tests (i.e. MLE, GOF, etc..) to identify the distribution, use identifyDistribution with the required parameters for the MLE of a given distribution type each one will be executed. If a parameter is missing, that distribution will be skipped.
 
 The output will indicate the success of the evalaution steps or any issues encountered for each distribution.
 ```
@@ -221,14 +221,39 @@ pip wheel -r .\src\requirements.txt
 ```
 
 ## Example of loading data from CSV
-```
-from simufit.Display import run_fitter
-run_fitter()
-```
 
-- In the file menu, click Import data
-- Click Browse... button and select testData.csv
-- Use comma delimiter, skiprows = 1, use columnn = 1
-- Click import, histogram should load.
-- In the main window, select Normal distribution.
-- You should now be able to use sliders to fit the data.
+### Example 1: 5000 gamma-distributed samples with a=2.3, b=5.4
+```
+from simufit import Display as dp
+dp.run_fitter()
+```
+- Import the tests/gammaTestData.txt file. Use skip rows=1, use column=1, delimter=semi-colon
+- Select Gamma from the Distribution pull-down menu
+- Press the auto-fit button.
+
+### Example 2: 10000 geometric-distributed samples with p=0.67
+```
+from simufit import Display as dp
+dp.run_fitter()
+```
+- Import the tests/geometricTestData.txt file. Use skip rows=1, use column=0, delimter=comma
+- Select Geometric from the Distribution pull-down menu
+- Press the auto-fit button.
+
+### Example 3: 1000 normally distributed samples with mean=0, variance=1
+```
+from simufit import Display as dp
+dp.run_fitter()
+```
+- Import the tests/normalTestData.txt file. Use skip rows=0, use column=1, delimter=comma
+- Select Normal from the Distribution pull-down menu
+- Press the auto-fit button.
+
+### Example 4: 1000 Weibull-distributed samples with a=2, b=3
+```
+from simufit import Display as dp
+dp.run_fitter()
+```
+- Import the tests/weibullTestData.txt file. Use skip rows=0, use column=0, delimter=comma
+- Select Weibull from the Distribution pull-down menu
+- Press the auto-fit button.
