@@ -1,92 +1,179 @@
 # Simufit Guide
 
-## Example Distribution:
+This guide will walk a user through installation, usage of the package and the GUI interface.
 
-### Import simufit and Distribution Types (i.e. Bernoulli, Uniform, Geometric, etc...):
+## Project Structure
+The Simufit project is a Python based application that is designed to produce a whl file for pip package installation. 
+
+Development takes place in an Anaconda virtual environment which is set up for either a Mac, Windows 10 or Linux system. The requirement files used to create the Conda environments the environment_win10.yml and environment.yml file (the latter being used for Linux and Mac). These files are available in the root folder of the application.
+
+The WHL file is built using setup&#46;py, located in the root folder, and it builds the package located in the "simufit" folder. All files related to the execution of Simufit are located in this folder. Please see the architecture diagram provided in the Simufit report for more information about the design of the application.
+
+An azure-pipelines.yml file is included in the root folder for use with the Azure DevOps platform for continuous integration. This YML file instructs the build pipeline to create a new WHL file after every successful Pull Request completion.
+
+A "tests" folder is included which contins the Tests class with a unique test for each distribution type. These tests are run to determine the accuracy of identifying the supported distributions from a randomized dataset. Results of these test can be found in the project report documentation.
+
+## Creating the Conda Environment
+To create the Conda Environment, select the appropriate file for the operating system being used (environment_win10.yml for Windows 10, environment.yml for Mac/Linux) then execute the following commands from an Anaconda Prompt.
+
+```
+cd <path/to/project>
+conda env create --file <filename>
+```
+
+### Activating the Conda Environment
+```
+conda activate sim
+```
+
+## Creating a Pip Package:
+### Creating the Requirements.txt File
+```
+pip wheel -r .\simufit\requirements.txt
+```
+### Creating the WHL file
+```
+python setup.py bdist_wheel
+```
+
+## Installation
+One WHL file is used for all supported operating systems Mac, Windows 10, Linux. This file is generated after each Pull Request completion as part of the Azure DevOps continuous integration process. Since this file is not loaded onto a PyPi server at this time, it can be installed from a local folder using Pip. (Please note it is recommended you install this in a prompt using administrator rights.)
+
+```
+pip install simufit-0.0.45-py3-none-any.whl
+```
+The installation will take some time down download and install all components. Since this is using a Conda environment it may be necessary to install Pip to the environment first.
+
+```
+conda install pip
+```
+
+## Simufit Instructions:
+This section will describe the useage of the Simufit package. First it will show how to import the package and any subcomponents, provide a walk-through of loading data and identifying a distribution, and use on how to interface with the GUI for a deeper hands on approach to exploring the dataset.
+### Import the Simufit Package:
+To use the software there are 3 imports that will help every user out. 
 ```
 import simufit as sf
 from simufit import DistributionType as dt
+from simufit import Display as dp
 ```
-### Create an instance of the Distribution class and set the distribution type:
+The first line shows the simufit package being loaded with a common alias of 'sf'. 
+
+DistributionType is an Enum class that provides a collection of supported distributions.
+
+Display is a class that provides access to the GUI directly for a completely hands on experience. 
+
+### Create an instance of the Distribution class
 ```
 x = sf.Distribution()
-x.setDistribution(dt.UNIFORM)
-```
-### Generate Sample Data:
-```
-x.generateSamples(a=10,b=20,size=200,seed=123)
 ```
 
-### Display the distribution object information:
+### Setting an Explicit Distribution
 ```
+x.setDistribution(dt.UNIFORM)
+```
+
+### Setting a Random Distribution
+This will select a random distribution from the DistributionType Enum, exlcuding 'Unknown'.
+```
+x.setRandomDistribution()
+```
+
+### Available Distributions
+The 'Unknown' distribution is set by default to denote a set of observation that have yet to be identified or a new Distribution object. Not all methods can be executed directly on the "Unknown" distribution such as the MLE and GOF methods, instead the 'identifyDistribution' method must be used.
+``` 
+dt.GEOMETRIC
+dt.UNIFORM
+dt.NORMAL
+dt.EXPONENTIAL
+dt.GAMMA
+dt.BERNOULLI
+dt.BINOMIAL
+dt.WEIBULL
+dt.UNKNOWN
+```
+### Generate Sample Data
+The 'generateSamples' method takes in a **kwargs argument designed to pass all required parameters to the distributions expressed in the dist_generator.py file. These distributions are not designed to be directly accessed, rather they are designed to be used within an instantiated Distribution object. All missing parameter errors provided by these classes will be returned in the same fashion as directly working with them.
+
+Each distribution has parameters specific to that statistical distribution along with the parameters 'size' and 'seed'. Executing the 'generateSamples' method without passing any parameters causes it to randomly select a distribution, then create random values for the parameters and size. 
+
+Distributions loaded, or randomly generated, will populate attributes of the Distribution object such as the size of the dataset, any seed if provided, the range of values, and when the distribution is not 'Unknown' it also will also add the measure type (e.g. Discrete, Continuous).
+
+The following are examples of how to generate samples for each distribution type.
+```
+x = sf.Distribution()
+
+# 200 Random Samples with Seed
+x.generateSamples(size=200, seed=12345)
+
+# Bernoulli
+x.setDistribution(dt.BERNOULLI)
+x.generateSamples(p=0.5,size=200,seed=12345)
+
+# Binomial
+x.setDistribution(dt.BINOMIAL)
+x.generateSamples(n=10,p=0.5,size=200,seed=12345)
+
+# Geometric
+x.setDistribution(dt.GEOMETRIC)
+x.generateSamples(p=0.5,size=200,seed=12345)
+
+# Uniform
+x.setDistribution(dt.UNIFORM)
+x.generateSamples(a=1,b=10,size=200,seed=12345)
+
+# Normal
+x.setDistribution(dt.NORMAL)
+x.generateSamples(mean=0,var=1,size=200,seed=12345)
+
+# Exponential
+x.setDistribution(dt.EXPONENTIAL)
+x.generateSamples(lambd=1,size=200,seed=12345)
+
+# Gamma
+x.setDistribution(dt.GAMMA)
+x.generateSamples(a=1,b=2,size=200,seed=12345)
+
+# Weibull
+x.setDistribution(dt.WEIBULL)
+x.generateSamples(a=3,b=10,size=200,seed=12345)
+
+```
+
+### Display Distribution Object Information
+```
+The 'display' method provides all of the relavent information about the loaded dataset. If a seed is provided it will be shown instead of 'None'. The range of values is provided along with the size of the dataset. A partial list of samples (head/tail). If the distribution has been set or is identified it will show the 'Measure Type' and 'Distribution' of the observations.
 
 x.display()
 ..........
-Seed:  123
-Range:  10.026880645743207 - 19.953584820340176
-Size:  200
-Samples:  [16.96469186 12.86139335 12.26851454 15.51314769 17.1946897  14.2310646
- 19.80764198 16.84829739 14.80931901 13.92117518 13.43178016 17.29049707
- 14.38572245 10.59677897 13.98044255 17.37995406 11.8249173  11.75451756
- 15.31551374 15.31827587 16.34400959 18.49431794 17.24455325 16.11023511
- 17.22443383 13.22958914 13.61788656 12.28263231 12.93714046 16.30976124
- 10.9210494  14.33701173 14.30862763 14.93685098 14.2583029  13.12261223
- 14.26351307 18.93389163 19.44160018 15.01836676 16.23952952 11.15618395
- 13.17285482 14.14826212 18.66309158 12.50455365 14.83034264 19.85559786
- 15.19485119 16.12894526 11.20628666 18.26340801 16.03060128 15.45068006
- 13.42763834 13.04120789 14.17022211 16.81300766 18.75456842 15.10422337
- 16.69313783 15.85936553 16.24903502 16.74689051 18.42342438 10.83194988
- 17.63682841 12.43666375 11.94222961 15.72456957 10.95712517 18.85326826
- 16.27248972 17.23416358 10.16129207 15.94431879 15.56785192 11.58959644
- 11.53070515 16.95529529 13.18766426 16.91970296 15.5438325  13.88950574
- 19.2513249  18.41669997 13.57397567 10.43591464 13.04768073 13.98185682
- 17.0495883  19.95358482 13.55914866 17.62547814 15.93176917 16.91701799
- 11.51127452 13.98876293 12.40855898 13.43456014 15.13128154 16.6662455
- 11.05908485 11.30894951 13.21980606 16.61564337 18.46506225 15.53257345
- 18.54452488 13.84837811 13.16787897 13.54264676 11.71081829 18.29112635
- 13.38670846 15.52370075 15.78551468 15.21533059 10.02688065 19.88345419
- 19.05341576 12.07635861 12.92489413 15.20010153 19.01911373 19.83630885
- 12.57542064 15.64359043 18.06968684 13.94370054 17.31073036 11.61069014
- 16.00698568 18.65864458 19.83521609 10.7936579  14.28347275 12.0454286
- 14.50636491 15.47763573 10.9332671  12.96860775 19.2758424  15.69003731
- 14.57411998 17.53525991 17.41862152 10.48579033 17.08697395 18.39243348
- 11.65937884 17.80997938 12.86536617 13.06469753 16.65261465 11.11392172
- 16.64872449 18.87856793 16.96311268 14.40327877 14.38214384 17.65096095
- 15.65642001 10.84904163 15.82671088 18.14843703 13.37066383 19.2757658
- 17.50717    15.74063825 17.51643989 10.79148961 18.59389076 18.21504113
- 19.0987166  11.28631198 10.81780087 11.38415573 13.9937871  14.24306861
- 15.62218379 11.2224355  12.01399501 18.11644348 14.67987574 18.07938209
- 10.07426379 15.51592726 19.31932148 15.82175459 12.06095727 17.17757562
- 13.7898585  16.68383947 10.29319723 16.35900359 10.32197935 17.44780655
- 14.72913002 11.21754355]
+Seed:  None
+Range:  -3.886485561330249 - 3.5320721007053124
+Size:  10001
+Samples:  [ 0.          0.01208081  1.40534153 ...  0.93437205 -0.92969817
+  1.42402297]
 Measure Type:  CONTINUOUS
-Distribution:  UNIFORM
+Distribution:  NORMAL
 ..........
 ```
-### Fit the Data and Get the Maximum Likelihood Estimate:
-```
-x.fit()
-x.Distribution.MLE(x._samples, use_minimizer=True, x0=0.42)
-```
+### Identify an Unknown Distribution
+To run multiple tests (i.e. MLE, GOF, etc..) for identification of a distribution, use the 'identifyDistribution' method. This method will run with 0 parameters or with initial guess parameters specific to different distributions. Though no parameters are required for most distributions, the Binomial does require the 'n' paramter for the number of bins to execute. The 'identifyDistribution' method will evaluate the loaded dataset against all supported distributions in the system. 
 
-### Identify Unknown Distribution
-To run multiple tests (i.e. MLE, GOF, etc..) to identify the distribution, use identifyDistribution with the required parameters for the MLE of a given distribution type each one will be executed. If a parameter is missing, that distribution will be skipped. 
-
-The output will indicate the success of the evalaution steps or any issues encountered for each distribution.
+Any warnings encountered will be presented for that distribution type. The final output will indicate the distribution identified, or note that one could not be identified but instead will provide the most likely distribution. (The testing class considers these a fail)
 ```
+# Default, no parameters (Skips Binomial)
 x.identifyDistribution()
 
+# Run Binomial
+x.identifyDistribution(n=5)
+
+# Specify starting parameters for identification
 x.identifyDistribution(a0=9,b0=27, use_minimizer=True,p0=0.5,mean0=17.5,var0=4,n=1)
 
 Evaluating Geometric
 -----------------------------------------------
 Starting...
-...\simufit\dist_generator.py:537: RuntimeWarning: invalid value encountered in log
-  return (n * np.log(p) + np.sum(samples - 1) * np.log(1 - p)) * -1
 Completed
 -----------------------------------------------
-
-
 
 Evaluating Uniform
 -----------------------------------------------
@@ -94,141 +181,402 @@ Starting...
 Completed
 -----------------------------------------------
 
-
-
 Evaluating Normal
 -----------------------------------------------
 Starting...
 Completed
 -----------------------------------------------
 
-
-
 Evaluating Exponential
 -----------------------------------------------
-Distribution Skipped
+Starting...
+Completed
 -----------------------------------------------
-
-
 
 Evaluating Gamma
 -----------------------------------------------
 Starting...
-...\simufit\dist_generator.py:746: RuntimeWarning: invalid value encountered in log
-  return ((a - 1) * np.sum(np.log(samples)) - n * scipy.special.gamma(a) - n * a * np.log(b) - (np.sum(samples) / b)) * -1
-Warning: Optimizer failed to converge with initial guess 9, 27. Returned None for MLE values. Try another initial guess.
+<path\to\folder>\Simulation\simufit\Helpers.py:11: RuntimeWarning: divide by zero encountered in log
+  s = np.log((1 / n) * np.sum(samples)) - (1 / n) * np.sum(np.log(samples))
+<path\to\folder>\Simulation\simufit\Helpers.py:11: RuntimeWarning: invalid value encountered in log
+  s = np.log((1 / n) * np.sum(samples)) - (1 / n) * np.sum(np.log(samples))
+Converged in 1 iterations.
 Completed
 -----------------------------------------------
-
-
 
 Evaluating Bernoulli
 -----------------------------------------------
 Starting...
-...\simufit\dist_generator.py:435: RuntimeWarning: invalid value encountered in log
-  return (m * np.log(p) + (n - m) * np.log(1 - p)) * -1
-...\simufit\dist_generator.py:435: RuntimeWarning: divide by zero encountered in log
-  return (m * np.log(p) + (n - m) * np.log(1 - p)) * -1
-Warning: Optimizer failed to converge with initial guess 0.5. Returned None for MLE values. Try another initial guess.
 Completed
 -----------------------------------------------
-
-
 
 Evaluating Binomial
 -----------------------------------------------
-Starting...
-...\simufit\dist_generator.py:479: RuntimeWarning: invalid value encountered in log
-  return (np.sum(scipy.special.comb(n, samples)) + np.sum(samples) * np.log(p) + (n * len(samples) - np.sum(samples)) * np.log(1 - p)) * -1
-...\simufit\dist_generator.py:479: RuntimeWarning: divide by zero encountered in log
-  return (np.sum(scipy.special.comb(n, samples)) + np.sum(samples) * np.log(p) + (n * len(samples) - np.sum(samples)) * np.log(1 - p)) * -1
-Warning: Optimizer failed to converge with initial guess 0.5. Returned None for MLE values. Try another initial guess.
-Completed
+Distribution Skipped
 -----------------------------------------------
-
-
 
 Evaluating Weibull
 -----------------------------------------------
 Starting...
-...\simufit\dist_generator.py:804: RuntimeWarning: invalid value encountered in log
-  return (n * np.log(a) - n * np.log(b) + (a - 1) * np.sum(np.log(samples / b)) - np.sum(np.power((samples / b), a))) * -1
-...\simufit\dist_generator.py:804: RuntimeWarning: invalid value encountered in power
-  return (n * np.log(a) - n * np.log(b) + (a - 1) * np.sum(np.log(samples / b)) - np.sum(np.power((samples / b), a))) * -1
-Warning: Optimizer failed to converge with initial guess 9, 27. Returned None for MLE values. Try another initial guess.
+<path\to\folder>\Simulation\simufit\Helpers.py:37: RuntimeWarning: divide by zero encountered in log
+  A = np.sum(np.log(samples)) / n
+<path\to\folder>\Simulation\simufit\Helpers.py:37: RuntimeWarning: invalid value encountered in log
+  A = np.sum(np.log(samples)) / n
+<path\to\folder>\Simulation\simufit\Helpers.py:42: RuntimeWarning: divide by zero encountered in log
+  a_hat = (((6 / (np.pi ** 2)) * (np.sum(np.log(samples) ** 2) - ((np.sum(np.log(samples))) ** 2) / n)) / (n - 1)) ** -0.5
+<path\to\folder>\Simulation\simufit\Helpers.py:42: RuntimeWarning: invalid value encountered in log
+  a_hat = (((6 / (np.pi ** 2)) * (np.sum(np.log(samples) ** 2) - ((np.sum(np.log(samples))) ** 2) / n)) / (n - 1)) ** -0.5
+<path\to\folder>\Simulation\simufit\Helpers.py:39: RuntimeWarning: divide by zero encountered in log
+  C = lambda x: np.sum((samples ** x) * np.log(samples))
+<path\to\folder>\Simulation\simufit\Helpers.py:39: RuntimeWarning: invalid value encountered in log
+  C = lambda x: np.sum((samples ** x) * np.log(samples))
+<path\to\folder>\Simulation\simufit\Helpers.py:40: RuntimeWarning: divide by zero encountered in log
+  H = lambda x: np.sum((samples ** x) * (np.log(samples) ** 2))
+<path\to\folder>\Simulation\simufit\Helpers.py:40: RuntimeWarning: invalid value encountered in log
+  H = lambda x: np.sum((samples ** x) * (np.log(samples) ** 2))
+Converged in 1 iterations.
 Completed
 -----------------------------------------------
+
+Distribution:  Normal
 ```
 ### Displaying an Evaluation Report
-To display the values calculated by each of the identification of Distribution tests, use the printReport() method.
+To display the values calculated by each of the identification of Distribution tests, use the printReport() method. This provides information gathered during the evaluation such as the measure type detected (e.g. Discrete or Continuous), the number of unique elements (used to identify Bernoulli distributions), and information pertaining the MLE and GOF results of each distribution type. 'Type Detection Match' indicates that the measure type was the same for both the distribution being evaluated and the dataset.
+
+A score is calculated using the Goodness of Fit results relative to the distance from the probability parameter. Please see the project documentation for more information. All distributions are shown in order from most likely to least likely.
+
+If 'identifyDistribution' was able to identify the distribution type, it will automatically update the Distribution object.
 
 ```
 x.printReport()
 
--------------
+EVALUATION REPORT:
 
-Distribution Type:  Geometric
-MLE:  [0.11176758]
-Goodness of Fit:  None
+Type Detected:  CONTINUOUS
+Unique Elements:  10001
+=============
+Distribution:  Normal
+Distribution Type:  CONTINUOUS
+Type Detection Match:  True
+MLE:  [0.00471985 1.00239414]
+Goodness of Fit:  [54.60642229 65.1707689 ]
+Goodness of Fit Pass:  True
+Overall Score:  1.1759808100466607
 -------------
-
-Distribution Type:  Uniform
-MLE:  (-24.83433420862302, 36.50829018537624)
-Goodness of Fit:  None
+Distribution:  Uniform
+Distribution Type:  CONTINUOUS
+Type Detection Match:  True
+MLE:  [-3.88648556  3.5320721 ]
+Goodness of Fit:  [10843.08469153    74.46832416]
+Goodness of Fit Pass:  False
+Overall Score:  1.578051708155909e-63
 -------------
-
-Distribution Type:  Normal
-MLE:  [ 8.94883253 97.37910797]
-Goodness of Fit:  None
+Distribution:  Geometric
+Distribution Type:  CONTINUOUS
+Type Detection Match:  False
+MLE:  [211.87134087]
+Goodness of Fit:  [       nan 5.99146455]
+Goodness of Fit Pass:  False
+Overall Score:  nan
 -------------
-
-Distribution Type:  Exponential
+Distribution:  Exponential
+Distribution Type:  CONTINUOUS
+Type Detection Match:  True
+MLE:  [211.87134087]
+Goodness of Fit:  [None None]
+Goodness of Fit Pass:  False
+Overall Score:  nan
+-------------
+Distribution:  Gamma
+Distribution Type:  CONTINUOUS
+Type Detection Match:  True
+MLE:  [nan nan]
+Goodness of Fit:  [        nan 74.46832416]
+Goodness of Fit Pass:  False
+Overall Score:  nan
+-------------
+Distribution:  Binomial
+Distribution Type:  CONTINUOUS
+Type Detection Match:  False
 MLE:  Not Performed
 Goodness of Fit:  Not Performed
+Goodness of Fit Pass:  False
+Overall Score:  nan
+-------------
+Distribution:  Weibull
+Distribution Type:  CONTINUOUS
+Type Detection Match:  True
+MLE:  [nan nan]
+Goodness of Fit:  [        nan 74.46832416]
+Goodness of Fit Pass:  False
+Overall Score:  nan
+-------------
+Distribution:  Bernoulli
+Distribution Type:  CONTINUOUS
+Type Detection Match:  False
+MLE:  [0.00471985]
+Goodness of Fit:  No GOF for Bernoulli
+Goodness of Fit Pass:  False
+Overall Score:  nan
 -------------
 
-Distribution Type:  Gamma
-MLE:  (None, None)
-Goodness of Fit:  None
--------------
+```
+### Fit the Data and Get the MLE and GOF:
+An alternative to using 'identifydistribution' is to get retrieve the values using the GUI. To do this the user needs to load the dataset using the 'fit' method.
+```
+x.fit()
+```
+A window will open that has a dropdown to select various distributions. In this example, it is seen that the Normal distribution is selected, and the parameters 'mean' and 'variance' have sliders. These can be adjusted until the blue line appears to match the observations. 
 
-Distribution Type:  Bernoulli
-MLE:  None
-Goodness of Fit:  None
--------------
+![Fit Window](images/fit.PNG)
 
-Distribution Type:  Binomial
-MLE:  None
-Goodness of Fit:  None
--------------
+A second option is to click "Auto Fit" and allow the curve to best match the samples. If this is acceptable, the user click 'Accept Distribution' and the Distribution object will be updated accordingly. The 'mean' and 'variance' values that are shown in the GUI can be used to calcuate the Goodness of Fit (GOF). 
 
-Distribution Type:  Weibull
-MLE:  (None, None)
-Goodness of Fit:  None
--------------
+![Auto Fit](images/identified.PNG)
 
+Once the distribution type is identified, or if the user know what the distribution should be and assigned it to the Distribution object, they can execute the MLE command for that specific distribution and give a starting point to calculate it.
+
+#### Calculating the MLE
+Though it is recommended the user use the 'identifyDistribution' method, the direct approach of identifying the MLE independently is available. The calls differ with each distribution.
+```
+# Bernoulli
+x.Distribution.MLE(x.getSamples(), use_minimizer=False, p0=None)
+
+# Binomial
+x.Distribution.MLE(x.getSamples(), use_minimizer=True, n=None, p0=None)
+
+# Geometric
+x.Distribution.MLE(x.getSamples(), use_minimizer=False, p0=None)
+
+# Uniform
+x.Distribution.MLE(x.getSamples())
+
+# Normal
+x.Distribution.MLE(x.getSamples(), use_minimizer=False, mean0=None, var0=None)
+
+# Exponential
+x.Distribution.MLE(x.getSamples(), use_minimizer=False, lambd0=None)
+
+# Gamma
+x.Distribution.MLE(x.getSamples(), use_minimizer=False, a0=None, b0=None)
+
+#Weibull
+x.Distribution.MLE(x.getSamples(), use_minimizer=False, a0=None, b0=None)
 ```
 
+#### Calculating the GOF
+Similiar to the MLE it is recommended the user use the 'identifyDistribution' method for the Goodness of Fit (GOF) test, but the direct approach of identifying the GOF independently is available. The calls differ with each distribution.
+```
+# Bernoulli
+# Not Applicable for this Distribution
 
-## Creating a Pip Package:
-### Creating the whl
-```
-python setup.py bdist_wheel
-```
-### Creating the Requirements.txt File
-```
-pip wheel -r .\src\requirements.txt
+# Binomial
+x.Distribution.GOF(x.getSamples(), n=None, mle_p=None)
+
+# Geometric
+x.Distribution.GOF(x.getSamples(), mle_p=None)
+
+# Uniform
+x.Distribution.GOF(x.getSamples(), mle_a=None, mle_b=None)
+
+# Normal
+x.Distribution.GOF(x.getSamples(), mle_mu=None, mle_var=None))
+
+# Exponential
+x.Distribution.GOF(x.getSamples(), mle_lambda=None)
+
+# Gamma
+x.Distribution.GOF(x.getSamples(), mle_a=None, mle_b=None)
+
+#Weibull
+x.Distribution.GOF(x.getSamples(), mle_a=None, mle_b=None)
 ```
 
-## Example of loading data from CSV
+## Example of Loading Data from CSV
+Data can be loaded using either the CLI or GUI.
+
+### GUI CSV Loading
+The GUI has the ability to load data directly into the plot for evaluation, but to store the data in a Distribution object for any additional evaluation (e.g. identifyDistribution) a Distribution object must be passed in or the GUI must be called on that object.
 ```
-from simufit.Display import run_fitter
-run_fitter()
+import simufit as sf
+from simufit import Display as dp
+
+x = sf.Distribution()
+run_fitter(distribution=x)
 ```
+Once the GUI is loaded:
 
 - In the file menu, click Import data
-- Click Browse... button and select testData.csv
-- Use comma delimiter, skiprows = 1, use columnn = 1
-- Click import, histogram should load.
-- In the main window, select Normal distribution.
-- You should now be able to use sliders to fit the data.
+- Click Browse... button and select <filename>.csv
+
+![Load CSV](images/csv_load.PNG)
+
+- Select the settings for the file
+  - Use Comma Delimiter, semi-colon, tab
+  - Skip Rows
+  - Use Columnn
+- Click import, plot will  load.
+- The Distribution object will now be populated with the observed data.
+
+![CSV Loaded](images/csv_loaded.PNG)
+
+### CLI CSV Loading
+A collection of observations can be loaded directly into a Distribution object using an instantiation of it.
+
+```
+x = sf.Distribution()
+x.readCsv(<filepath>, skip_header=True, delimiter=',')
+```
+
+## General Functions
+The following general methods can be executed on any Distribution object.
+
+### Reset Object
+The reset method clears out all settings and returns it to the state of a new Distribution object.
+```
+x = sf.Distribution()
+x.generateSamples()
+x.reset()
+```
+
+### Get/Set Seed:
+These methods retrieve and establish the seed value for random variate generation.
+```
+x = sf.Distribution()
+x.setSeed(seed=123)
+x.getSeed()
+```
+
+### Get/Set Size:
+These methods retrieve and establish the size for a collection of random variates generated, please note if there are already samples in the Distribution object the size is not mutable.
+```
+x = sf.Distribution()
+x.setSize(size=200)
+y.getSize()
+```
+
+### Get Range
+This method retrieves the minimum and maximum values of the sample observations.
+```
+x = sf.Distribution()
+x.generateSamples()
+x.getRange()
+```
+
+### General Statistical Methods
+The following methods provide general statisical inforamtion about the loaded observations.
+
+```
+x = sf.Distribution()
+x.generateSamples()
+
+# Median
+x.getMedian()
+
+# Expected Value
+x.getExpectedValue()
+
+# Variance
+x.getVariance()
+
+# Standard Deviation
+x.getStandardDeviation()
+```
+## Additional Graphical Options
+
+### Histogram (w/Comparison)
+A user can optionally view just the histogram of a given observation set. By default bins are automatically selected, but the parameter 'bins' can be passed in to specify the bin size.
+
+```
+y = sf.Distribution()
+y.generateSamples()
+y.drawHistogram(bins=5)
+
+```
+![Histogram](images/histogram_single.PNG)
+
+Alternatively, a user can load a second Distribution object to compare 2 histograms. One idea is that a user could load the observation dataset into 'x' and then generate a specific distribution of random variates and compare the two.
+
+```
+x = sf.Distribution()
+x.readCsv('<path/to/file>', usecols=1) 
+#Usecols allows  data to be loaded from a specific column
+
+y = sf.Distribution()
+y.setDistribution(dt.NORMAL)
+y.setSize(x.getSize())
+y.generateSamples(mean=x.getExpectedValue(),var=x.getVariance())
+x.drawHistogram(comparison_distribution=y)
+```
+![Compare Histograms](images/histogram_compare.PNG)
+
+## Methods Not Implemented - Next Steps
+Future work will include the implementation of even more graphical options to help with distribution identification. These methods exist in the system but will throw exceptions until work is performed in the future. These would be released before a formal 1.0, but remain outside of the scope of this project.
+
+```
+x.drawScatterPlot()
+
+x.drawLinePlot()
+
+x.drawBoxPlot()
+
+x.drawDistributionFunctionDifferences()
+
+x.drawQQPlot()
+
+x.drawPPPlot()
+```
+
+In addition to these future graphical enhancements, additional statistical methods will be added to support sample evaluation. Please note, these were also stretch goal items beyond the scope of the project and will return an exception if used at this time.
+
+```
+x.getCoefficientOfVariation()
+
+x.getLexisRatio()
+```
+
+# Known Issues and Troubleshooting
+## Loading GUI Does not Appear
+### Issue
+When running the command dp.run_fitter() or x.fit() the terminal appears to be working on something, but the GUI does not appear. 
+
+### Resolution
+The application does load the GUI, but on some operating systems the window does not appear on top of all other windows. Check the other open windows on the system to see if it is hiding behind them.
+
+<hr>
+
+## GUI Blocks Use of Command Line
+### Issue
+I cannot use the command line while the GUI is open.
+
+### Resolution
+This is expected as the Python application is hosting the GUI application. You will not be able to type any commands in the terminal until the GUI has been closed.
+
+<hr>
+
+## Data Missing when GUI Closed
+### Issue
+I loaded data into the GUI from a CSV/Text file, but when I close the window the data is no longer accessible.
+
+### Resolution
+The dp.run_fitter method by default does not import data to a Distribution for use outside of the GUI. To pass data into a Distribution object one must either be passed into the 'run_fitter' method or the 'fit' method must be called inside of an existing Distribution object.
+
+```
+x = sf.Distibution()
+
+dp.run_fitter(distribution=x)
+# or
+x.fit()
+```
+
+When the data is imported, or a distribution is accepted, it will then be assigned to the instantiated Distribution object (e.g. x) and the data can be accessed after closing the GUI.
+
+<hr>
+
+## GUI Crashes when Clicking Auto Fit or Accept Distribution
+
+### Issue
+When clicking either the 'Auto Fit' or 'Accept Distribution' button crashes the GUI.
+
+### Resolution
+This is caused by the use of these buttons when there is not a sample set loaded. Loading a dataset either by passing in a Distribution object, or by reading a CSV will correct this problem.

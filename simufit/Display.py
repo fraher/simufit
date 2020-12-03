@@ -31,7 +31,7 @@ class Histogram(QMainWindow):
 
     def __init__(self, distribution, bins=10, comparison_distribution=None):
         super(Histogram, self).__init__()
-        self.setWindowTitle('Histogram')
+        self.setWindowTitle('Histogram')             
         self.samples = distribution.getSamples()
         self.comparison_distribution = comparison_distribution
         self.initUI()
@@ -479,7 +479,7 @@ class Fitter(QMainWindow):
         self.sc.fig.tight_layout()
         self.sc.fig.canvas.draw()
 
-def show_histogram(samples, bins=None, comparison_distribution=None):
+def show_histogram(distribution, bins=None, comparison_distribution=None):
     if not QApplication.instance():
         app = QApplication(sys.argv)
     else:
@@ -503,7 +503,7 @@ def show_histogram(samples, bins=None, comparison_distribution=None):
     palette.setColor(QPalette.HighlightedText, QtCore.Qt.black)
     app.setPalette(palette)
 
-    window = Histogram(samples, bins, comparison_distribution)
+    window = Histogram(distribution, bins, comparison_distribution)
     window.show()
     QtWidgets.QApplication.setQuitOnLastWindowClosed(True)
     app.exec_()
@@ -545,9 +545,9 @@ class Display():
         """Run the PyQt/MPL visualization."""
         run_fitter(distribution=distribution)
 
-    def histogram(distribution, bins=None, comparison_distribution=None):
+    def histogram(self, distribution, bins=None, comparison_distribution=None):
         """Displays the histogram of a given collection of samples, optionally a separate distribution can
-        be passed to show a comparison"""
+        be passed to show a comparison"""        
         if comparison_distribution is not None:
             if len(distribution.getSamples()) != len(comparison_distribution.getSamples()):
                 print("Distribution sample sizes do not match")

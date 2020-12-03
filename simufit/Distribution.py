@@ -47,9 +47,9 @@ class Distribution(IDistribution):
 
         self.setDistribution(dt.UNKNOWN)
 
-    def readCsv(self, filepath, skip_header=True, delimiter=','):
+    def readCsv(self, filepath, skip_header=True, delimiter=',',usecols=None):
         """This method loads a collection of samples from a CSV file"""
-        self._samples = np.genfromtxt(fname=filepath, delimiter=delimiter, skip_header=skip_header)
+        self._samples = np.genfromtxt(fname=filepath, delimiter=delimiter, skip_header=skip_header,usecols=usecols)
         self._range = [min(self._samples), max(self._samples)] # Update the range
         self._size = len(self._samples)
         self._type = dt.UNKNOWN
@@ -284,7 +284,7 @@ class Distribution(IDistribution):
     def drawHistogram(self, bins=None, comparison_distribution=None):
         """This method opens a graph and displays one or two histograms, one of the sample set
         alongside a different dataset for comparison if dataset is selected"""
-        self.Distribution.histogram(self._samples, bins, comparison_distribution)
+        self.Distribution.histogram(self, bins, comparison_distribution)
 
     def drawScatterPlot(self):
         """This method opens a graph and displays a scatter plot of the sample set"""
