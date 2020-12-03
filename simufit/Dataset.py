@@ -80,10 +80,12 @@ class Dataset(QWidget):
             delimiter = [',', ';', '\t'][self.buttonGroup.checkedId()]
             skip_header = self.skipRows.value()
             usecols = self.useCol.value()
-            self.mw.samples = np.genfromtxt(fname=filepath, delimiter=delimiter, skip_header=skip_header, usecols=usecols)
+            self.mw.samples = np.genfromtxt(fname=filepath, delimiter=delimiter, skip_header=skip_header, usecols=usecols)            
+            self.mw.dist = None
+            self.mw.changeDist()
             if self.mw.distribution is not None:
-                self.mw.distribution.setSamples(self.mw.samples)            
-                self.mw.distribution.setDistribution(dt.UNKNOWN)            
+                self.mw.distribution.reset()
+                self.mw.distribution.setSamples(self.mw.samples)                                             
             self.mw.sc.axes.clear()
             self.mw.sc.axes.hist(self.mw.samples, bins=np.histogram_bin_edges(self.mw.samples, 'fd'), density=True, color=(152/255, 200/255, 132/255), ec='white')
             self.mw.sc.fig.canvas.draw_idle()        
