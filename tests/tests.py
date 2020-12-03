@@ -5,6 +5,7 @@ import numpy as np
 class Tests():
 
     def __init__(self):
+        self._seed = 12345
         self._weibull = 0.0
         self._bernoulli = 0.0
         self._binomial = 0.0
@@ -13,8 +14,8 @@ class Tests():
         self._normal = 0.0
         self._exponential = 0.0
         self._gamma = 0.0
-        self._samples_min = 20
-        self._samples_max = 400
+        self._samples_min = 1000
+        self._samples_max = 10000
 
     def printReport(self):
         print('Weibull: ', self._weibull)
@@ -38,6 +39,8 @@ class Tests():
 
 
     def bernoulli(self):
+        np.random.seed(self._seed)
+
         test_count = 0
         test_success = 0
 
@@ -62,6 +65,8 @@ class Tests():
         self._bernoulli = test_success/test_count
 
     def binomial(self):
+        np.random.seed(self._seed)
+
         test_count = 0
         test_success = 0
 
@@ -86,6 +91,8 @@ class Tests():
         self._binomial = test_success/test_count
 
     def geometric(self):
+        np.random.seed(self._seed)
+
         test_count = 0
         test_success = 0
 
@@ -110,6 +117,8 @@ class Tests():
         self._geometric = test_success/test_count
 
     def uniform(self):
+        np.random.seed(self._seed)
+
         test_count = 0
         test_success = 0
 
@@ -135,6 +144,8 @@ class Tests():
         self._uniform = test_success/test_count
 
     def normal(self):
+        np.random.seed(self._seed)
+
         test_count = 0
         test_success = 0
 
@@ -162,6 +173,8 @@ class Tests():
         self._normal = test_success/test_count
 
     def exponential(self):
+        np.random.seed(self._seed)
+
         test_count = 0
         test_success = 0
 
@@ -186,6 +199,8 @@ class Tests():
         self._exponential = test_success/test_count
 
     def gamma(self):
+        np.random.seed(self._seed)
+
         test_count = 0
         test_success = 0
 
@@ -210,6 +225,8 @@ class Tests():
         self._gamma = test_success/test_count
 
     def weibull(self):
+        np.random.seed(self._seed)
+
         test_count = 0
         test_success = 0
 

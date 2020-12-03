@@ -4,7 +4,9 @@ from scipy.stats import distributions
 from simufit.Dataset import Dataset
 from itertools import chain
 import simufit.dist_generator as dg
+from simufit.Types import DistributionType as dt
 import numpy as np
+
 
 import matplotlib
 matplotlib.use('Qt5Agg')
@@ -27,10 +29,10 @@ class MplCanvas(FigureCanvasQTAgg):
 
 class Histogram(QMainWindow):
 
-    def __init__(self, samples, bins=10, comparison_distribution=None):
+    def __init__(self, distribution, bins=10, comparison_distribution=None):
         super(Histogram, self).__init__()
         self.setWindowTitle('Histogram')
-        self.samples = samples
+        self.samples = distribution.getSamples()
         self.comparison_distribution = comparison_distribution
         self.initUI()
         self.plotData(bins=bins)
@@ -79,10 +81,24 @@ class Fitter(QMainWindow):
         self.samples = samples
         self.dist = dist
         self.distribution = distribution        
+        
+        if self.distribution is not None:      
+            if len(self.distribution.getSamples()) > 0:
+                self.samples = self.distribution.getSamples()
+            
+            if self.distribution.Distribution.name != dt.UNKNOWN.name.title():
+                self.dist = self.distribution.Distribution            
+        
         self.initUI()
-        self.changeDist()
+        
         if self.distribution is not None:
-            self.samples = self.distribution.getSamples()
+            self.changeDist(dist=self.distribution.Distribution.name)
+        else:
+            self.changeDist()
+
+        if self.distribution is not None and self.distribution.Distribution.name != dt.UNKNOWN.name.title() and len(self.distribution.getSamples()) > 0:
+            self.autoFit()
+
         if self.samples is not None:
             self.plotData()
 
@@ -115,17 +131,29 @@ class Fitter(QMainWindow):
         self.autoFitButton = QtWidgets.QPushButton('Auto Fit')
         self.autoFitButton.pressed.connect(self.autoFit)
         toolbar.addWidget(self.autoFitButton)
+        
+        if self.distribution is not None:
+            self.acceptDistributionButton = QtWidgets.QPushButton('Accept Distribution')
+            self.acceptDistributionButton.pressed.connect(self.acceptDistribution)
+            toolbar.addWidget(self.acceptDistributionButton)
 
         # Create grid layout for selecting distribution
         self.distSelector = QtWidgets.QComboBox()
-        self.distSelector.setFixedSize(QtCore.QSize(150, 40))
-        if self.dist is None or self.dist.name == 'Unknown':
-            dists = ['Bernoulli', 'Binomial', 'Geometric', 'Uniform', 'Normal', 'Exponential', 'Gamma', 'Weibull']
+        self.distSelector.setFixedSize(QtCore.QSize(150, 40))        
+
+        dists = ['Bernoulli', 'Binomial', 'Geometric', 'Uniform', 'Normal', 'Exponential', 'Gamma', 'Weibull']
+
+        if self.dist is None or self.dist.name == 'Unknown':            
             for dist in dists:
                 self.distSelector.addItem(dist)
         else:
             self.distSelector.addItem(self.dist.name)
         self.distSelector.currentTextChanged.connect(self.changeDist)
+
+        if self.dist is not None and self.dist.name != 'Unknown':            
+            for dist in dists:
+                if self.dist.name != dist:
+                    self.distSelector.addItem(dist)
 
         # Slider 1
         self.slider1Label = QtWidgets.QLabel('')
@@ -196,61 +224,93 @@ class Fitter(QMainWindow):
         widget.setLayout(layout)
         self.setCentralWidget(widget)
 
+    def acceptDistribution(self):
+        if self.dist.name == dt.BERNOULLI.name.title():
+            self.distribution.setDistribution(dt.BERNOULLI)
+
+        if self.dist.name == dt.BINOMIAL.name.title():
+            self.distribution.setDistribution(dt.BINOMIAL)
+
+        if self.dist.name == dt.EXPONENTIAL.name.title():
+            self.distribution.setDistribution(dt.EXPONENTIAL)
+
+        if self.dist.name == dt.GAMMA.name.title():
+            self.distribution.setDistribution(dt.GAMMA)
+
+        if self.dist.name == dt.GEOMETRIC.name.title():
+            self.distribution.setDistribution(dt.GEOMETRIC)
+
+        if self.dist.name == dt.NORMAL.name.title():
+            self.distribution.setDistribution(dt.NORMAL)
+
+        if self.dist.name == dt.UNIFORM.name.title():
+            self.distribution.setDistribution(dt.UNIFORM)
+
+        if self.dist.name == dt.WEIBULL.name.title():
+            self.distribution.setDistribution(dt.WEIBULL)
+
+        self.statusBar().showMessage("Distribution set to {}".format(self.dist.name))
+        
+
     def autoFit(self):
         """Fit distribution to data using MLE. Display chi-square value."""
+        if self.samples is not None:
 
-        try:
-            if self.dist.name == 'Binomial':
-                mle_params = self.dist.MLE(self.samples, self.slider2.value())
-                self.slider1.setValue(int(mle_params * 1000))
-                self.slider1Value.setText(str(round(mle_params[0], 3)))
-                chisq0, chisq = self.dist.GOF(self.samples, self.slider2.value(), mle_params)
-            else:
-                mle_params = self.dist.MLE(self.samples)
-                if self.dist.name == 'Bernoulli' or self.dist.name == 'Geometric':
+            try:
+                if self.dist.name == 'Binomial':
+                    mle_params = self.dist.MLE(self.samples, self.slider2.value())
                     self.slider1.setValue(int(mle_params * 1000))
                     self.slider1Value.setText(str(round(mle_params[0], 3)))
-                elif self.dist.name == 'Uniform':
-                    self.slider1.setValue(int(np.floor(mle_params[0])))
-                    self.slider2.setValue(int(np.ceil(mle_params[1])))
-                    self.slider1Value.setText(str(int(np.floor(mle_params[0]))))
-                    self.slider2Value.setText(str(int(np.ceil(mle_params[1]))))
-                elif self.dist.name == 'Normal':
-                    self.slider2.setValue(int(mle_params[0] * 100))
-                    self.slider3.setValue(int(mle_params[1] * 100))
-                    self.slider2Value.setText(str(round(mle_params[0], 2)))
-                    self.slider3Value.setText(str(round(mle_params[1], 2)))
-                elif self.dist.name == 'Exponential':
-                    self.slider1.setValue(int(mle_params * 10))
-                    self.slider1Value.setText(str(round(mle_params[0], 1)))
-                elif self.dist.name == 'Gamma' or self.dist.name == 'Weibull':
-                    self.slider2.setValue(int(mle_params[0] * 10))
-                    self.slider3.setValue(int(mle_params[1] * 10))
-                    self.slider2Value.setText(str(round(mle_params[0], 3)))
-                    self.slider3Value.setText(str(round(mle_params[1], 3)))
-                chisq0, chisq = self.dist.GOF(self.samples, *mle_params)
-            if chisq0 < chisq:
-                self.statusBar().showMessage(f'Accept fit with χ0^2 = {round(chisq0, 3)} < χ^2 = {round(chisq, 3)}', 10000)
-            else:
-                self.statusBar().showMessage(f'Reject fit with χ0^2 = {round(chisq0, 3)} > χ^2 = {round(chisq, 3)}', 10000)
-        except Exception as e:
-            if self.dist.name == 'Bernoulli':
-                self.statusBar().showMessage('No goodness of fit test for Bernoulli.')
-            else:
-                self.statusBar().showMessage(f'Goodness-of-fit test failed!.', 10000)
-                print(e)
+                    chisq0, chisq = self.dist.GOF(self.samples, self.slider2.value(), mle_params)
+                else:
+                    mle_params = self.dist.MLE(self.samples)
+                    if self.dist.name == 'Bernoulli' or self.dist.name == 'Geometric':
+                        self.slider1.setValue(int(mle_params * 1000))
+                        self.slider1Value.setText(str(round(mle_params[0], 3)))
+                    elif self.dist.name == 'Uniform':
+                        self.slider1.setValue(int(np.floor(mle_params[0])))
+                        self.slider2.setValue(int(np.ceil(mle_params[1])))
+                        self.slider1Value.setText(str(int(np.floor(mle_params[0]))))
+                        self.slider2Value.setText(str(int(np.ceil(mle_params[1]))))
+                    elif self.dist.name == 'Normal':
+                        self.slider2.setValue(int(mle_params[0] * 100))
+                        self.slider3.setValue(int(mle_params[1] * 100))
+                        self.slider2Value.setText(str(round(mle_params[0], 2)))
+                        self.slider3Value.setText(str(round(mle_params[1], 2)))
+                    elif self.dist.name == 'Exponential':
+                        self.slider1.setValue(int(mle_params * 10))
+                        self.slider1Value.setText(str(round(mle_params[0], 1)))
+                    elif self.dist.name == 'Gamma' or self.dist.name == 'Weibull':
+                        self.slider2.setValue(int(mle_params[0] * 10))
+                        self.slider3.setValue(int(mle_params[1] * 10))
+                        self.slider2Value.setText(str(round(mle_params[0], 3)))
+                        self.slider3Value.setText(str(round(mle_params[1], 3)))
+                    chisq0, chisq = self.dist.GOF(self.samples, *mle_params)
+                if chisq0 < chisq:
+                    self.statusBar().showMessage(f'Accept fit with χ0^2 = {round(chisq0, 3)} < χ^2 = {round(chisq, 3)}', 10000)
+                else:
+                    self.statusBar().showMessage(f'Reject fit with χ0^2 = {round(chisq0, 3)} > χ^2 = {round(chisq, 3)}', 10000)
+            except Exception as e:
+                if self.dist.name == 'Bernoulli':
+                    self.statusBar().showMessage('No goodness of fit test for Bernoulli.')
+                else:
+                    self.statusBar().showMessage(f'Goodness-of-fit test failed!.', 10000)
+                    print(e)
+        else:
+            self.statusBar().showMessage("No samples to fit.")
 
     def importData(self):
         """Import a data file (csv, txt) and view as histogram."""
 
         self.datasetWindow.show()
 
-    def changeDist(self):
+    def changeDist(self, dist=None):
         """Sets up the appropriate parameter sliders for a given distribution."""
 
         # Checks whether samples generated from a particular known distribtion.
         # This will be the case when fit method is called from a distribution class object.
-        dist = self.distSelector.currentText()
+        if dist is None:
+            dist = self.distSelector.currentText()
 
         if dist == 'Bernoulli':
             self.dist = dg.Bernoulli()
@@ -481,15 +541,15 @@ def run_fitter(samples=None, dist=None, distribution=None):
     app.quit()
 
 class Display():
-    def fit(self, samples):
+    def fit(self, distribution):
         """Run the PyQt/MPL visualization."""
-        run_fitter(self, samples=None, distribution=None)
+        run_fitter(distribution=distribution)
 
-    def histogram(self, samples, bins=None, comparison_distribution=None):
+    def histogram(distribution, bins=None, comparison_distribution=None):
         """Displays the histogram of a given collection of samples, optionally a separate distribution can
         be passed to show a comparison"""
         if comparison_distribution is not None:
-            if len(samples) != len(comparison_distribution.getSamples()):
+            if len(distribution.getSamples()) != len(comparison_distribution.getSamples()):
                 print("Distribution sample sizes do not match")
                 return
-        show_histogram(samples, bins, comparison_distribution)
+        show_histogram(distribution, bins, comparison_distribution)

@@ -25,9 +25,10 @@ class Distribution(IDistribution):
         self._samples = list()
         self._distribution_report = list()
         self._measureType = mt.UNKNOWN
-        self._type = None
-        self.Distribution = dt.UNKNOWN
-        pass
+        self._type = dt.UNKNOWN
+        self.Distribution = dt.UNKNOWN        
+
+        self.setDistribution(dt.UNKNOWN)
 
     # General Functions
     def clearSamples(self):
@@ -39,11 +40,12 @@ class Distribution(IDistribution):
         self._range = [None, None]
         self._size = None
         self._samples = list()
-        self._distribution_report = dr()
+        self._distribution_report = list()
         self._measureType = mt.UNKNOWN
-        self._type = None
+        self._type = dt.UNKNOWN
         self.Distribution = dt.UNKNOWN
 
+        self.setDistribution(dt.UNKNOWN)
 
     def readCsv(self, filepath, skip_header=True, delimiter=','):
         """This method loads a collection of samples from a CSV file"""
@@ -130,8 +132,7 @@ class Distribution(IDistribution):
                 kwargs['size'] = self._size
 
             random_distribution = rand.choice([x for x in list(dt) if x != dt.UNKNOWN])
-            distribution = getattr(dg, str(random_distribution).replace('DistributionType.','').title())()
-            print(random_distribution.name)
+            distribution = getattr(dg, str(random_distribution).replace('DistributionType.','').title())()            
 
             # Generate values for required parameters
             min_range = None
@@ -337,7 +338,7 @@ class Distribution(IDistribution):
     # Fitting Methods
     def fit(self):
         """Run the PyQt/MPL visualization for the loaded distribution"""
-        self.Distribution.fit(self._samples)
+        self.Distribution.fit(self)
 
     def MLE(self, **kwargs):
         """Run the MLE method for the loaded distribution"""
@@ -393,6 +394,11 @@ class Distribution(IDistribution):
 
     def identifyDistribution(self, use_minimizer=None, a0=None, b0=None, mean0=None, var0=None, p0=None, lambd0=None, n=None):
         """Executes logic to identify the most likely distribution"""
+        
+        if len(self._samples) == 0:
+            print("No samples in distribution.")
+            return
+        
         self._distribution_report = list()
         temp = copy.deepcopy(self)
         kwargs = {}
