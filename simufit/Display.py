@@ -1,5 +1,6 @@
 import sys
 import scipy.stats
+from scipy.stats import distributions
 from simufit.Dataset import Dataset
 from itertools import chain
 import simufit.dist_generator as dg
@@ -71,14 +72,17 @@ class Histogram(QMainWindow):
 
 class Fitter(QMainWindow):
 
-    def __init__(self, samples, dist=None):
+    def __init__(self, samples=None, dist=None, distribution=None):
         super(Fitter, self).__init__()
         self.setWindowTitle('Distribution Fitter')
         self.datasetWindow = Dataset(self)
         self.samples = samples
         self.dist = dist
+        self.distribution = distribution        
         self.initUI()
         self.changeDist()
+        if self.distribution is not None:
+            self.samples = self.distribution.getSamples()
         if self.samples is not None:
             self.plotData()
 
@@ -445,7 +449,7 @@ def show_histogram(samples, bins=None, comparison_distribution=None):
     app.exec_()
     app.quit()
 
-def run_fitter(samples=None, dist=None):
+def run_fitter(samples=None, dist=None, distribution=None):
     if not QApplication.instance():
         app = QApplication(sys.argv)
     else:
@@ -470,7 +474,7 @@ def run_fitter(samples=None, dist=None):
     palette.setColor(QPalette.HighlightedText, QtCore.Qt.black)
     app.setPalette(palette)
 
-    window = Fitter(samples, dist)
+    window = Fitter(samples, dist, distribution)
     window.show()
     QtWidgets.QApplication.setQuitOnLastWindowClosed(True)
     app.exec_()
@@ -479,7 +483,7 @@ def run_fitter(samples=None, dist=None):
 class Display():
     def fit(self, samples):
         """Run the PyQt/MPL visualization."""
-        run_fitter(samples, self)
+        run_fitter(self, samples=None, distribution=None)
 
     def histogram(self, samples, bins=None, comparison_distribution=None):
         """Displays the histogram of a given collection of samples, optionally a separate distribution can
