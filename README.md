@@ -155,8 +155,19 @@ Measure Type:  CONTINUOUS
 Distribution:  NORMAL
 ..........
 ```
+<<<<<<< HEAD
 ### Identify an Unknown Distribution
 To run multiple tests (i.e. MLE, GOF, etc..) for identification of a distribution, use the 'identifyDistribution' method. This method will run with 0 parameters or with initial guess parameters specific to different distributions. Though no parameters are required for most distributions, the Binomial does require the 'n' paramter for the number of bins to execute. The 'identifyDistribution' method will evaluate the loaded dataset against all supported distributions in the system. 
+=======
+### Fit the Data and Get the Maximum Likelihood Estimate:
+```
+x.fit()
+x.Distribution.MLE(x._samples, use_minimizer=True, x0=0.42)
+```
+
+### Identify Unknown Distribution
+To run multiple tests (i.e. MLE, GOF, etc..) to identify the distribution, use identifyDistribution with the required parameters for the MLE of a given distribution type each one will be executed. If a parameter is missing, that distribution will be skipped.
+>>>>>>> 2ff62c3e0fe715dab34d6d0f6721e66fbbf80a52
 
 Any warnings encountered will be presented for that distribution type. The final output will indicate the distribution identified, or note that one could not be identified but instead will provide the most likely distribution. (The testing class considers these a fail)
 ```
@@ -392,6 +403,7 @@ x.Distribution.GOF(x.getSamples(), mle_a=None, mle_b=None)
 x.Distribution.GOF(x.getSamples(), mle_a=None, mle_b=None)
 ```
 
+<<<<<<< HEAD
 ## Example of Loading Data from CSV
 Data can be loaded using either the CLI or GUI.
 
@@ -580,3 +592,42 @@ When clicking either the 'Auto Fit' or 'Accept Distribution' button crashes the 
 
 ### Resolution
 This is caused by the use of these buttons when there is not a sample set loaded. Loading a dataset either by passing in a Distribution object, or by reading a CSV will correct this problem.
+=======
+## Example of loading data from CSV
+
+### Example 1: 5000 gamma-distributed samples with a=2.3, b=5.4
+```
+from simufit import Display as dp
+dp.run_fitter()
+```
+- Import the tests/gammaTestData.txt file. Use skip rows=1, use column=1, delimter=semi-colon
+- Select Gamma from the Distribution pull-down menu
+- Press the auto-fit button.
+
+### Example 2: 10000 geometric-distributed samples with p=0.67
+```
+from simufit import Display as dp
+dp.run_fitter()
+```
+- Import the tests/geometricTestData.txt file. Use skip rows=1, use column=0, delimter=comma
+- Select Geometric from the Distribution pull-down menu
+- Press the auto-fit button.
+
+### Example 3: 1000 normally distributed samples with mean=0, variance=1
+```
+from simufit import Display as dp
+dp.run_fitter()
+```
+- Import the tests/normalTestData.txt file. Use skip rows=0, use column=1, delimter=comma
+- Select Normal from the Distribution pull-down menu
+- Press the auto-fit button.
+
+### Example 4: 1000 Weibull-distributed samples with a=2, b=3
+```
+from simufit import Display as dp
+dp.run_fitter()
+```
+- Import the tests/weibullTestData.txt file. Use skip rows=0, use column=0, delimter=comma
+- Select Weibull from the Distribution pull-down menu
+- Press the auto-fit button.
+>>>>>>> 2ff62c3e0fe715dab34d6d0f6721e66fbbf80a52
